@@ -20,6 +20,7 @@
 
 > [!IMPORTANT]
 > 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成
+> 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能，演奏还在开发中
 
 <!-- 模块：项目导航 -->
 <details>
@@ -282,7 +283,7 @@ go run ./cmd/server
 
 | 来源 | 地址 | 用途 |
 | --- | --- | --- |
-| SkyMusicPlay-for-Windows | [windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) | 原版功能、格式兼容与迁移基础 |
+| SkyMusicPlay-for-Windows | [windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) | 原版功能、格式兼容 |
 | genshin-music | [Specy/genshin-music](https://github.com/Specy/genshin-music) | 游戏编谱交互、格式兼容与运行素材 |
 | PianoTrans | [azuwis/pianotrans](https://github.com/azuwis/pianotrans) | 可选音频转 MIDI 扩展 |
 | Best README Template | [othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template) | README 信息结构参考 |
