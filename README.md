@@ -19,8 +19,10 @@
 </div>
 
 > [!IMPORTANT]
-> 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成
+> 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成 <br>
 > 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能，演奏还在开发中
+
+> **请使用Visual Studio 2026 打开**
 
 <!-- 模块：项目导航 -->
 <details>
