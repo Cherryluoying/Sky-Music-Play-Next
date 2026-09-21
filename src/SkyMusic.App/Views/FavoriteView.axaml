@@ -1,0 +1,15 @@
+<!-- 模块：SkyMusic.App 页面视图 FavoriteView -->
+<UserControl x:Class="SkyMusic.App.Views.FavoriteView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="{Binding Title}" />
+    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+      <TextBlock Text="&#xEB51;" FontFamily="Segoe Fluent Icons" FontSize="38"
+                 Foreground="{StaticResource SkyBrushTextTertiary}" HorizontalAlignment="Center" />
+      <TextBlock Text="还没有收藏内容" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+      <TextBlock Text="{Binding Description}" Classes="sky-secondary" HorizontalAlignment="Center" />
+    </StackPanel>
+  </Grid>
+</UserControl>

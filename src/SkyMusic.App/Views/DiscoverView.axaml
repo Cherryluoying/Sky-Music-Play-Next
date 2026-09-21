@@ -1,0 +1,88 @@
+<!-- 模块：SkyMusic.App 页面视图 DiscoverView -->
+<UserControl x:Class="SkyMusic.App.Views.DiscoverView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid RowDefinitions="56,*" ClipToBounds="True">
+    <controls:SkyWindowHeader Title="发现音乐" ShowForward="True">
+      <controls:SkyWindowHeader.TrailingContent>
+        <controls:SkySearchBox Text="{Binding SearchText}" Watermark="搜索歌曲、歌手或乐谱" />
+      </controls:SkyWindowHeader.TrailingContent>
+    </controls:SkyWindowHeader>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled" ClipToBounds="True">
+      <StackPanel Margin="24,10,18,52" MaxWidth="1180" HorizontalAlignment="Stretch">
+        <controls:SkyHeroBanner DataContext="{Binding BannerTrack}" Margin="0,0,0,24" />
+
+        <controls:SkySectionHeader Title="推荐乐谱" Margin="0,0,0,12" />
+        <ItemsControl ItemsSource="{Binding RecommendedTracks}" Margin="0,0,0,24">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:SkyMusicCard />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <controls:SkySectionHeader Title="热门乐谱" Margin="0,0,0,12" />
+        <ItemsControl ItemsSource="{Binding PopularTracks}" Margin="0,0,0,24">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:SkyMusicCard />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <controls:SkySectionHeader Title="最新上传" Margin="0,0,0,12" />
+        <ItemsControl ItemsSource="{Binding LatestTracks}" Margin="0,0,0,24">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:SkyMusicCard />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <controls:SkySectionHeader Title="探索分类" Margin="0,4,0,12" />
+        <ItemsControl ItemsSource="{Binding Categories}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:CategoryItemViewModel">
+              <Border Width="148" Height="54" Margin="0,0,14,14" Padding="12,0"
+                      CornerRadius="{StaticResource SkyCornerMedium}"
+                      Background="{StaticResource SkyBrushSurface}"
+                      BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" FontSize="15"
+                             Foreground="{StaticResource SkyBrushAccent}" />
+                  <TextBlock Text="{Binding Title}" Classes="sky-secondary" FontWeight="SemiBold" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="{Binding ErrorMessage}" Foreground="#B42318" FontSize="12" Margin="0,12" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

@@ -1,0 +1,112 @@
+<!-- 模块：SkyMusic.App 视觉样式 ComponentMusic -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="SkyMusicCardTheme" TargetType="Button">
+      <Setter Property="Width" Value="172" />
+      <Setter Property="Height" Value="222" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,14,18" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource SkyCornerCard}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch"
+                              VerticalContentAlignment="Stretch" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource SkyBrushBorder}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkyHeroBannerTheme" TargetType="Button">
+      <Setter Property="Height" Value="190" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource SkyCornerBanner}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" ClipToBounds="True">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch"
+                              VerticalContentAlignment="Stretch" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="#66FFFFFF" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Opacity" Value="0.94" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkyTrackRowTheme" TargetType="Button">
+      <Setter Property="Height" Value="66" />
+      <Setter Property="Padding" Value="8" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource SkyCornerMedium}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch"
+                              VerticalContentAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+      </Style>
+      <Style Selector="^.selected /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+</Styles>

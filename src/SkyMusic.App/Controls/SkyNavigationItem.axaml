@@ -1,0 +1,19 @@
+<!-- 模块：SkyMusic.App 自定义控件 SkyNavigationItem -->
+<UserControl x:Class="SkyMusic.App.Controls.SkyNavigationItem"
+             x:Name="Root"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Button Theme="{StaticResource SkyNavigationItemTheme}"
+          Classes.selected="{Binding IsSelected, ElementName=Root}"
+          Command="{Binding Command, ElementName=Root}"
+          CommandParameter="{Binding CommandParameter, ElementName=Root}">
+    <Grid ColumnDefinitions="28,*">
+      <TextBlock Text="{Binding Glyph, ElementName=Root}"
+                 FontFamily="Segoe Fluent Icons" FontSize="15"
+                 Foreground="{StaticResource SkyBrushTextSecondary}"
+                 VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Text="{Binding Label, ElementName=Root}"
+                 Classes="sky-body" VerticalAlignment="Center" />
+    </Grid>
+  </Button>
+</UserControl>

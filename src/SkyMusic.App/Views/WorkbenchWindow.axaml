@@ -1,0 +1,56 @@
+<!-- 模块：SkyMusic.App 页面视图 WorkbenchWindow -->
+<Window x:Class="SkyMusic.App.Views.WorkbenchWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:SkyMusic.App.Views"
+        Title=""
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="56"
+        Width="1360" Height="820"
+        MinWidth="1080" MinHeight="680"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="56,*" Background="{StaticResource ComposerBrushCanvas}">
+    <Grid Margin="18,5,218,0" ColumnDefinitions="Auto,24,Auto,*,Auto" ColumnSpacing="10"
+          Background="{StaticResource ComposerBrushCanvas}">
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource SkyBrushAccent}">
+          <TextBlock Text="&#xEC4F;" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="White"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding ProjectTitle}" Classes="composer-label" FontWeight="SemiBold" />
+          <TextBlock Text="SkyMusicPlay Workbench" Classes="composer-muted" Margin="0,2,0,0" />
+        </StackPanel>
+      </StackPanel>
+
+      <Border Grid.Column="2" Background="{StaticResource ComposerBrushPanelSoft}" CornerRadius="8"
+              Padding="3" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+          <Button Classes="composer-command" Content="游戏编谱"
+                  Command="{Binding SwitchToGameComposerCommand}" />
+          <Button Classes="composer-command" Content="专业模式"
+                  Command="{Binding SwitchToProfessionalCommand}" />
+        </StackPanel>
+      </Border>
+
+      <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Classes="composer-icon" Content="&#xE8A5;" Click="NewProject_OnClick"
+                ToolTip.Tip="新建工程" />
+        <Button Classes="composer-icon" Content="&#xE8E5;" Click="OpenProject_OnClick"
+                ToolTip.Tip="打开工程" />
+        <Button Classes="composer-icon" Content="&#xE74E;" Click="SaveProject_OnClick"
+                ToolTip.Tip="保存工程" />
+        <Button Classes="composer-icon" Content="&#xEDE1;" Click="ExportGameScore_OnClick"
+                ToolTip.Tip="导出游戏乐谱" />
+        <Button Classes="composer-icon" Content="&#xEC4F;" Click="ExportMidi_OnClick"
+                ToolTip.Tip="导出 MIDI" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="1">
+      <views:GameComposerView x:Name="GameComposer" IsVisible="{Binding IsGameComposer}"
+                              DataContext="{Binding Composer}" />
+      <views:ProfessionalWorkspaceView IsVisible="{Binding IsProfessional}" />
+    </Grid>
+  </Grid>
+</Window>

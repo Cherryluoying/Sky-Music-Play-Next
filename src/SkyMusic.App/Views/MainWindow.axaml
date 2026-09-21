@@ -1,0 +1,64 @@
+<!-- 模块：SkyMusic.App 页面视图 MainWindow -->
+<Window x:Class="SkyMusic.App.Views.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:SkyMusic.App.Controls"
+        xmlns:views="using:SkyMusic.App.Views"
+        xmlns:vm="using:SkyMusic.App.ViewModels"
+        Title="SkyMusicPlay"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="56"
+        Width="1180"
+        Height="700"
+        MinWidth="980"
+        MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:DiscoverViewModel">
+      <views:DiscoverView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:LibraryViewModel">
+      <views:LibraryView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:FavoriteViewModel">
+      <views:FavoriteView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:RecentViewModel">
+      <views:RecentView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:TasksViewModel">
+      <views:TasksView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:MidiStudioViewModel">
+      <views:MidiStudioView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ScoreEditorViewModel">
+      <views:ScoreEditorView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:KeyMappingViewModel">
+      <views:KeyMappingView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:TranscriptionViewModel">
+      <views:TranscriptionView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:MacroRunnerViewModel">
+      <views:MacroRunnerView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <views:SettingsView />
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Grid Background="{StaticResource SkyBrushBackground}" RowDefinitions="*,88">
+    <Grid Grid.Row="0" IsVisible="{Binding IsStandardShellVisible}" ColumnDefinitions="188,*">
+      <controls:Sidebar />
+      <ContentControl Grid.Column="1" Content="{Binding CurrentPageViewModel}" />
+    </Grid>
+
+    <views:PlayerView Grid.Row="0"
+                      IsVisible="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                      DataContext="{Binding Playback}" />
+
+    <controls:SkyMiniPlayer Grid.Row="1" DataContext="{Binding Playback}" />
+  </Grid>
+</Window>

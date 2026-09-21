@@ -1,0 +1,27 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerTransport -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerTransport"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border Background="#EC17212D" BorderBrush="#344659" BorderThickness="0,1,0,0" Padding="12,0">
+    <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="12">
+      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+        <TextBlock Text="{Binding StatusText}" Classes="composer-muted" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+        <Button Classes="composer-icon" Content="&#xE892;" ToolTip.Tip="回到开始" />
+        <Button Classes="composer-icon" Content="&#xE768;" ToolTip.Tip="播放" Command="{Binding PreviewCommand}" />
+        <Button Classes="composer-icon" Content="&#xE71A;" ToolTip.Tip="停止" Command="{Binding StopPreviewCommand}" />
+        <Border Width="150" Height="3" CornerRadius="2" Background="#4054697B" Margin="8,0">
+          <Border Width="18" HorizontalAlignment="Left" Background="{StaticResource ComposerBrushAccent}"
+                  CornerRadius="2" />
+        </Border>
+        <TextBlock Text="{Binding DurationText}" Classes="composer-muted" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                  Spacing="10" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Bpm, StringFormat={}{0} BPM}" Classes="composer-muted" />
+        <TextBlock Text="{Binding ColumnSummary}" Classes="composer-muted" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

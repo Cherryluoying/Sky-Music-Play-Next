@@ -1,0 +1,61 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerSheetEditor -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerSheetEditor"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid RowDefinitions="Auto,*" Background="#B7141E29" ClipToBounds="True">
+    <Grid Margin="12,6" ColumnDefinitions="*,Auto">
+      <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+        <TextBlock Text="谱面" Classes="composer-label" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding SelectionSummary}" Classes="composer-muted" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3">
+        <Button Classes="composer-icon" Content="&#xE710;" ToolTip.Tip="后方加列"
+                Command="{Binding AddColumnCommand}" />
+        <Button Classes="composer-icon" Content="&#xE74D;" ToolTip.Tip="删除列"
+                Command="{Binding DeleteColumnCommand}" />
+        <Button Classes="composer-icon" Content="&#xE7C3;" ToolTip.Tip="标记分页点"
+                Command="{Binding ToggleBreakpointCommand}" />
+      </StackPanel>
+    </Grid>
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Visible"
+                  VerticalScrollBarVisibility="Auto" MinHeight="0" ClipToBounds="True">
+      <ItemsControl ItemsSource="{Binding Columns}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:ComposerColumnViewModel">
+            <Border Classes="composer-column"
+                    Classes.selected="{Binding IsSelected}"
+                    Classes.breakpoint="{Binding IsBreakpoint}">
+              <Grid RowDefinitions="38,*">
+                <Button Classes="composer-column-header" Command="{Binding SelectCommand}">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Number}" HorizontalAlignment="Center" FontSize="10"
+                               Foreground="{StaticResource ComposerBrushText}" />
+                    <TextBlock Text="{Binding TempoLabel}" HorizontalAlignment="Center" FontSize="9"
+                               Foreground="{StaticResource ComposerBrushTextSecondary}" />
+                  </StackPanel>
+                </Button>
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding Cells}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:ComposerCellViewModel">
+                      <ToggleButton Classes="composer-note"
+                                    Classes.other-layer="{Binding HasOtherLayer}"
+                                    IsChecked="{Binding IsActive}"
+                                    Command="{Binding ToggleCommand}"
+                                    ToolTip.Tip="{Binding Label}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

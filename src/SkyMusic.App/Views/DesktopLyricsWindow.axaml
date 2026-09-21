@@ -1,0 +1,43 @@
+<!-- 模块：SkyMusic.App 页面视图 DesktopLyricsWindow -->
+<Window x:Class="SkyMusic.App.Views.DesktopLyricsWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="720"
+        Height="112"
+        MinWidth="420"
+        MaxWidth="1000"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        Topmost="True"
+        WindowStartupLocation="Manual">
+  <Border Margin="12" Padding="22,12,12,12"
+          Background="#EEF6F8FB"
+          BorderBrush="#99DDE3EA"
+          BorderThickness="1"
+          CornerRadius="{StaticResource SkyCornerPlayer}"
+          BoxShadow="{StaticResource SkyElevationPlayer}"
+          PointerPressed="Surface_OnPointerPressed">
+    <Grid ColumnDefinitions="*,36">
+      <StackPanel VerticalAlignment="Center" Spacing="5">
+        <TextBlock Text="{Binding CurrentDesktopLyric}"
+                   Foreground="{StaticResource SkyBrushAccent}"
+                   FontSize="22"
+                   FontWeight="SemiBold"
+                   TextAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding NextDesktopLyric}"
+                   Foreground="{StaticResource SkyBrushTextSecondary}"
+                   FontSize="12"
+                   TextAlignment="Center"
+                   Opacity="0.72"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Button Grid.Column="1" Theme="{StaticResource SkyIconButtonTheme}"
+              Width="30" Height="30" VerticalAlignment="Top"
+              Content="&#xE711;" Click="Close_OnClick" ToolTip.Tip="关闭桌面歌词" />
+    </Grid>
+  </Border>
+</Window>

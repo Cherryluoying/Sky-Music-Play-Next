@@ -1,0 +1,92 @@
+<!-- 模块：SkyMusic.App 页面视图 MidiStudioView -->
+<UserControl x:Class="SkyMusic.App.Views.MidiStudioView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="MIDI 工作台" ShowForward="True" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,18,28,40" Spacing="20">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,8,Auto">
+          <StackPanel>
+            <TextBlock Text="输入与扒谱" Classes="sky-section-title" />
+            <TextBlock Text="连接 MIDI 键盘，实时查看 88 键输入并录制演奏" Classes="sky-secondary" Margin="0,5,0,0" />
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="sky-secondary" VerticalAlignment="Center" />
+
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10">
+            <ComboBox Width="280" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding RefreshCommand}" Content="刷新设备" />
+            <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Command="{Binding ToggleListeningCommand}"
+                    Content="{Binding ListeningLabel}" />
+            <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding ToggleRecordingCommand}"
+                    Content="{Binding RecordingLabel}" />
+            <Button Theme="{StaticResource SkyCommandButtonTheme}" Content="导出演奏"
+                    IsEnabled="{Binding HasRecording}" Click="ExportRecording_OnClick" />
+          </StackPanel>
+        </Grid>
+
+        <Border Background="{StaticResource SkyBrushSurface}" BorderBrush="{StaticResource SkyBrushBorder}"
+                BorderThickness="1" CornerRadius="{StaticResource SkyCornerCard}" Padding="16">
+          <Grid RowDefinitions="Auto,12,150">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="88 键钢琴窗" Classes="sky-card-title" />
+              <TextBlock Grid.Column="1" Text="A0 - C8" Classes="sky-caption" />
+            </Grid>
+            <controls:PianoKeyboardControl x:Name="PianoKeyboard" Grid.Row="2" MinWidth="720" />
+          </Grid>
+        </Border>
+
+        <Grid RowDefinitions="Auto,10,Auto">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="VST3 音色" Classes="sky-section-title" />
+              <TextBlock Text="插件将在独立宿主进程中加载，避免故障影响播放器" Classes="sky-secondary" Margin="0,4,0,0" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding ScanPluginsCommand}" Content="扫描插件" />
+          </Grid>
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+            <ComboBox ItemsSource="{Binding Plugins}" SelectedItem="{Binding SelectedPlugin}" MinWidth="420">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="180,70,*" MinHeight="30">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Format}" Classes="sky-caption" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Path}" Classes="sky-secondary"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Grid.Column="1" Margin="10,0,0,0" Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                    Command="{Binding LoadPluginCommand}" Content="加载音色" />
+          </Grid>
+        </Grid>
+
+        <Grid RowDefinitions="Auto,10,Auto">
+          <TextBlock Text="实时 MIDI 事件" Classes="sky-section-title" />
+          <Border Grid.Row="2" Background="{StaticResource SkyBrushSurface}" BorderBrush="{StaticResource SkyBrushBorder}"
+                  BorderThickness="1" CornerRadius="{StaticResource SkyCornerCard}" Padding="14">
+            <ItemsControl ItemsSource="{Binding RecentEvents}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="80,80,80,*" Height="30">
+                    <TextBlock Text="{Binding NoteName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding State}" Classes="sky-secondary" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Velocity}" Classes="sky-secondary" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding Time}" Classes="sky-caption" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

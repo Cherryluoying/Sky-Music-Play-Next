@@ -1,0 +1,75 @@
+<!-- 模块：SkyMusic.App 自定义控件 SkyMiniPlayer -->
+<UserControl x:Class="SkyMusic.App.Controls.SkyMiniPlayer"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <UserControl.Styles>
+    <Style Selector="controls|SkyProgressBar.mini-progress /template/ Thumb">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="controls|SkyProgressBar.mini-progress.show-thumb /template/ Thumb">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.desktop-lyrics.active /template/ Border#Root">
+      <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+    </Style>
+    <Style Selector="Button.desktop-lyrics.active">
+      <Setter Property="Foreground" Value="{StaticResource SkyBrushAccent}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{StaticResource SkyBrushSurface}"
+          BoxShadow="{StaticResource SkyElevationPlayer}">
+    <Grid RowDefinitions="14,*">
+      <controls:SkyProgressBar Grid.Row="0" Classes="mini-progress"
+                               Classes.show-thumb="{Binding IsPointerOver, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                               Theme="{StaticResource SkyMiniProgressRailTheme}"
+                               Minimum="0" Maximum="{Binding DurationSeconds}"
+                               Value="{Binding PositionSeconds, Mode=TwoWay}"
+                               HorizontalAlignment="Stretch" />
+
+      <Grid Grid.Row="1" ColumnDefinitions="280,*,280" Margin="18,0">
+        <Button Theme="{StaticResource SkySongInfoButtonTheme}"
+                Command="{Binding OpenPlayerCommand}" ToolTip.Tip="打开播放页">
+          <Grid ColumnDefinitions="52,*" VerticalAlignment="Center">
+            <Border Width="48" Height="48" CornerRadius="{StaticResource SkyCornerMedium}"
+                    Background="{StaticResource SkyBrushPlaceholder}" ClipToBounds="True">
+              <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="3">
+              <TextBlock Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
+                         Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding CurrentItem.Artist, FallbackValue=SkyMusicPlay}"
+                         Classes="sky-caption" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Grid>
+        </Button>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                    VerticalAlignment="Center" Spacing="9">
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding PreviousCommand}"
+                  Content="&#xE892;" ToolTip.Tip="上一首" />
+          <controls:SkyPlayButton Theme="{StaticResource SkyPlayButtonTheme}"
+                                  Command="{Binding TogglePlayCommand}"
+                                  Content="{Binding PlayGlyph}" ToolTip.Tip="播放或暂停" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding NextCommand}"
+                  Content="&#xE893;" ToolTip.Tip="下一首" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    VerticalAlignment="Center" Spacing="5">
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="desktop-lyrics"
+                  Classes.active="{Binding IsDesktopLyricsVisible}"
+                  Command="{Binding ToggleDesktopLyricsCommand}"
+                  Content="词" FontFamily="Microsoft YaHei UI" FontSize="13" ToolTip.Tip="桌面歌词" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE8EE;"
+                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="播放模式待接入" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE767;"
+                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="音量控制待接入" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE712;"
+                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="更多功能待接入" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

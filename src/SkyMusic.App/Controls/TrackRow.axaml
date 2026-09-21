@@ -1,0 +1,24 @@
+<!-- 模块：SkyMusic.App 自定义控件 TrackRow -->
+<UserControl x:Class="SkyMusic.App.Controls.TrackRow"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Button Theme="{StaticResource SkyTrackRowTheme}" Classes.selected="{Binding IsSelected}"
+          Command="{Binding PlayCommand}" ToolTip.Tip="播放">
+    <Grid ColumnDefinitions="50,*,130,52">
+      <Border Width="48" Height="48" CornerRadius="{StaticResource SkyCornerMedium}"
+              Background="{StaticResource SkyBrushPlaceholder}" ClipToBounds="True">
+        <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+      </Border>
+      <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="3">
+        <TextBlock Text="{Binding Title}" Classes="sky-card-title"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding Artist}" Classes="sky-secondary" FontSize="11"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <TextBlock Grid.Column="2" Text="{Binding Album}" Classes="sky-secondary" FontSize="11"
+                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      <TextBlock Grid.Column="3" Text="{Binding DurationText}" Classes="sky-caption" FontSize="11"
+                 HorizontalAlignment="Right" VerticalAlignment="Center" />
+    </Grid>
+  </Button>
+</UserControl>

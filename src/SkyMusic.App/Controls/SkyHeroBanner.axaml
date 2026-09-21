@@ -1,0 +1,34 @@
+<!-- 模块：SkyMusic.App 自定义控件 SkyHeroBanner -->
+<UserControl x:Class="SkyMusic.App.Controls.SkyHeroBanner"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Button Theme="{StaticResource SkyHeroBannerTheme}"
+          Command="{Binding PlayCommand}" ToolTip.Tip="播放推荐">
+    <Grid>
+      <Image Source="{Binding Cover}" Stretch="UniformToFill" Opacity="0.8" />
+      <Border Background="#700A1A31" />
+      <Grid Margin="28,22" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+        <StackPanel Spacing="7" VerticalAlignment="Center" MaxWidth="460">
+          <TextBlock Text="今日推荐" Classes="sky-secondary" Foreground="#DCEEFF"
+                     FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Title}" FontSize="26" Foreground="White"
+                     FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Artist}" Classes="sky-body" Foreground="#E3ECF7" />
+          <TextBlock Text="从一首乐谱开始今天的演奏" Classes="sky-secondary"
+                     Foreground="#D4DFED" />
+        </StackPanel>
+        <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22"
+                Background="White" VerticalAlignment="Center">
+          <TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="18"
+                     Foreground="{StaticResource SkyBrushAccent}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6">
+          <Border Width="24" Height="3" CornerRadius="2" Background="White" />
+          <Border Width="8" Height="3" CornerRadius="2" Background="#80FFFFFF" />
+          <Border Width="8" Height="3" CornerRadius="2" Background="#80FFFFFF" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Button>
+</UserControl>

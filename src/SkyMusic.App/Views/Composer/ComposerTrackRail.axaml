@@ -1,0 +1,45 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerTrackRail -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerTrackRail"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Border Background="{StaticResource ComposerBrushPanel}" BorderBrush="{StaticResource ComposerBrushBorder}"
+          BorderThickness="0,0,1,0" Padding="8">
+    <Grid RowDefinitions="Auto,8,*,8,Auto">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="乐器图层" Classes="composer-label" FontWeight="SemiBold"
+                   VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="composer-icon" Content="&#xE710;"
+                ToolTip.Tip="添加图层" Command="{Binding AddInstrumentCommand}" />
+      </Grid>
+      <ListBox Grid.Row="2" Classes="composer-track-list" ItemsSource="{Binding Instruments}"
+               SelectedIndex="{Binding SelectedLayer, Mode=TwoWay}">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="vm:ComposerInstrumentViewModel">
+            <Grid ColumnDefinitions="34,*,Auto" Margin="7,8" ColumnSpacing="7">
+              <Border Width="30" Height="30" CornerRadius="7" Background="#344A5D">
+                <Image Source="{Binding Artwork}" Stretch="Uniform" Opacity="0.92" />
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding DisplayName}" Classes="composer-label" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Detail}" Classes="composer-muted" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding Index}" Classes="composer-muted"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="2">
+        <Button Classes="composer-command" Content="添加乐器" Command="{Binding AddInstrumentCommand}" />
+        <Button Grid.Column="1" Classes="composer-icon" Content="&#xE74A;"
+                ToolTip.Tip="图层上移" Command="{Binding MoveLayerUpCommand}" />
+        <Button Grid.Column="2" Classes="composer-icon" Content="&#xE74B;"
+                ToolTip.Tip="图层下移" Command="{Binding MoveLayerDownCommand}" />
+        <Button Grid.Column="3" Classes="composer-icon" Content="&#xE74D;"
+                ToolTip.Tip="删除图层" Command="{Binding RemoveInstrumentCommand}" />
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

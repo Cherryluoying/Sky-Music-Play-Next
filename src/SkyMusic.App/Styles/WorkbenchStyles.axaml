@@ -1,0 +1,201 @@
+<!-- 模块：SkyMusic.App 视觉样式 WorkbenchStyles -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <SolidColorBrush x:Key="ComposerBrushCanvas" Color="#111923" />
+    <SolidColorBrush x:Key="ComposerBrushPanel" Color="#D91A2532" />
+    <SolidColorBrush x:Key="ComposerBrushPanelSoft" Color="#B9233142" />
+    <SolidColorBrush x:Key="ComposerBrushPanelHover" Color="#E02D4054" />
+    <SolidColorBrush x:Key="ComposerBrushBorder" Color="#3A526A" />
+    <SolidColorBrush x:Key="ComposerBrushText" Color="#F3F7FA" />
+    <SolidColorBrush x:Key="ComposerBrushTextSecondary" Color="#AABAC6" />
+    <SolidColorBrush x:Key="ComposerBrushAccent" Color="#63C7D4" />
+    <SolidColorBrush x:Key="ComposerBrushAccentSoft" Color="#3D63C7D4" />
+    <SolidColorBrush x:Key="ComposerBrushGenshin" Color="#D8C590" />
+  </Styles.Resources>
+
+  <Style Selector="TextBlock.composer-title">
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.composer-label">
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="TextBlock.composer-muted">
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushTextSecondary}" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+
+  <Style Selector="Button.composer-icon, ToggleButton.composer-icon">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushTextSecondary}" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.composer-icon:pointerover, ToggleButton.composer-icon:pointerover">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushPanelHover}" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
+  </Style>
+  <Style Selector="ToggleButton.composer-icon:checked">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+
+  <Style Selector="Button.composer-command, ToggleButton.composer-command">
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="Background" Value="#D9263546" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.composer-command:pointerover, ToggleButton.composer-command:pointerover">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushPanelHover}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+  <Style Selector="ToggleButton.composer-command:checked">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+  <Style Selector="Button.composer-command.active">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+    <Setter Property="Foreground" Value="#D9FAFF" />
+  </Style>
+
+  <Style Selector="ListBox.composer-track-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.composer-track-list ListBoxItem">
+    <Setter Property="MinHeight" Value="49" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,3" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="7" />
+  </Style>
+  <Style Selector="ListBox.composer-track-list ListBoxItem:selected">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
+  </Style>
+
+  <Style Selector="Border.composer-column">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Background" Value="#8F263341" />
+    <Setter Property="BorderBrush" Value="#233B4D" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+  </Style>
+  <Style Selector="Border.composer-column.selected">
+    <Setter Property="Background" Value="#7054BAC7" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+    <Setter Property="BorderThickness" Value="1,0" />
+  </Style>
+  <Style Selector="Border.composer-column.breakpoint">
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushGenshin}" />
+    <Setter Property="BorderThickness" Value="1,0" />
+  </Style>
+
+  <Style Selector="Button.composer-column-header">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="#C81B2734" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushTextSecondary}" />
+  </Style>
+  <Style Selector="Button.composer-column-header:pointerover">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushPanelHover}" />
+  </Style>
+
+  <Style Selector="ToggleButton.composer-note">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="MinHeight" Value="11" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ToggleButton.composer-note:pointerover">
+    <Setter Property="Background" Value="#4054BAC7" />
+  </Style>
+  <Style Selector="ToggleButton.composer-note.other-layer">
+    <Setter Property="Background" Value="#384C6073" />
+  </Style>
+  <Style Selector="ToggleButton.composer-note:checked">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+
+  <Style Selector="ToggleButton.game-key">
+    <Setter Property="Width" Value="72" />
+    <Setter Property="Height" Value="48" />
+    <Setter Property="Margin" Value="3" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="#D91D2A38" />
+    <Setter Property="BorderBrush" Value="#52677A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ToggleButton.game-key:pointerover">
+    <Setter Property="Background" Value="#F02B3C4E" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+  <Style Selector="ToggleButton.game-key:checked">
+    <Setter Property="Background" Value="#E34A9DA9" />
+    <Setter Property="BorderBrush" Value="#C7F5F7" />
+  </Style>
+  <Style Selector="ToggleButton.game-key.genshin">
+    <Setter Property="Width" Value="66" />
+    <Setter Property="Height" Value="42" />
+    <Setter Property="Background" Value="#EBF4EAD7" />
+    <Setter Property="BorderBrush" Value="#BDAF88" />
+    <Setter Property="Foreground" Value="#2E5155" />
+    <Setter Property="CornerRadius" Value="21" />
+  </Style>
+  <Style Selector="ToggleButton.game-key.genshin:pointerover">
+    <Setter Property="Background" Value="#FFF9E8" />
+    <Setter Property="BorderBrush" Value="#6FC3C4" />
+  </Style>
+  <Style Selector="ToggleButton.game-key.genshin:checked">
+    <Setter Property="Background" Value="#79C8C6" />
+    <Setter Property="Foreground" Value="#14383C" />
+  </Style>
+
+  <Style Selector="ListBox.instrument-card-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.instrument-card-list ListBoxItem">
+    <Setter Property="Width" Value="145" />
+    <Setter Property="MinHeight" Value="82" />
+    <Setter Property="Margin" Value="4" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="Background" Value="#D9243343" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+  </Style>
+  <Style Selector="ListBox.instrument-card-list ListBoxItem:pointerover">
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+  <Style Selector="ListBox.instrument-card-list ListBoxItem:selected">
+    <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+</Styles>

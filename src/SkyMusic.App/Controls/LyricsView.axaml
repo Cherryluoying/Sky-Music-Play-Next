@@ -1,0 +1,42 @@
+<!-- 模块：SkyMusic.App 自定义控件 LyricsView -->
+<UserControl x:Class="SkyMusic.App.Controls.LyricsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <UserControl.Styles>
+    <Style Selector="ListBox.lyrics">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.lyrics ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ListBox.lyrics ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
+  <ListBox x:Name="LyricsList" Classes="lyrics"
+           ItemsSource="{Binding Lyrics}"
+           SelectedIndex="{Binding CurrentLyricIndex, Mode=OneWay}"
+           SelectionMode="Single"
+           IsHitTestVisible="False"
+           ScrollViewer.VerticalScrollBarVisibility="Hidden">
+    <ListBox.ItemTemplate>
+      <DataTemplate DataType="vm:LyricLineViewModel">
+        <TextBlock Text="{Binding Text}"
+                   Foreground="{Binding Foreground}"
+                   FontSize="{Binding FontSize}"
+                   FontWeight="SemiBold"
+                   Opacity="{Binding Opacity}"
+                   TextWrapping="Wrap"
+                   Margin="2,0,24,28"
+                   MinHeight="30" />
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</UserControl>

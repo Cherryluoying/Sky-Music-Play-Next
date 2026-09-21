@@ -1,0 +1,51 @@
+<!-- 模块：SkyMusic.App 视觉样式 ComponentNavigation -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="SkyNavigationItemTheme" TargetType="Button">
+      <Setter Property="Height" Value="42" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource SkyCornerMedium}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <Grid ColumnDefinitions="3,*">
+              <Border x:Name="SelectionIndicator" Width="3" Height="18"
+                      CornerRadius="2" Background="{StaticResource SkyBrushAccent}"
+                      Opacity="0" VerticalAlignment="Center" />
+              <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Margin="9,0,0,0"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="Center" />
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+      </Style>
+      <Style Selector="^.selected /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+      </Style>
+      <Style Selector="^.selected /template/ Border#SelectionIndicator">
+        <Setter Property="Opacity" Value="1" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoftHover}" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+</Styles>

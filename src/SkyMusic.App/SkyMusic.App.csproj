@@ -1,0 +1,43 @@
+<!-- 模块：SkyMusic.App 桌面应用与工作区 -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SkyMusic.Core\SkyMusic.Core.csproj" />
+    <ProjectReference Include="..\SkyMusic.Infrastructure\SkyMusic.Infrastructure.csproj" />
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\GenshinMusic\Audio\**" />
+    <Content Include="Assets\GenshinMusic\Audio\**"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('..\..\native\SkyMusic.VstHost\bin\Release\SkyMusic.VstHost.exe')">
+    <None Include="..\..\native\SkyMusic.VstHost\bin\Release\SkyMusic.VstHost.exe"
+          Link="SkyMusic.VstHost.exe"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('..\..\native\SkyMusic.Midi\bin\Release\SkyMusic.Midi.dll')">
+    <None Include="..\..\native\SkyMusic.Midi\bin\Release\SkyMusic.Midi.dll"
+          Link="SkyMusic.Midi.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('..\..\native\SkyMusic.AudioPreview\bin\Release\SkyMusic.AudioPreview.dll')">
+    <None Include="..\..\native\SkyMusic.AudioPreview\bin\Release\SkyMusic.AudioPreview.dll"
+          Link="SkyMusic.AudioPreview.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

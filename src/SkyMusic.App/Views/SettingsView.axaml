@@ -1,0 +1,127 @@
+<!-- 模块：SkyMusic.App 页面视图 SettingsView -->
+<UserControl x:Class="SkyMusic.App.Views.SettingsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="设置" ShowForward="True" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,20,28,40" Spacing="18" MaxWidth="900" HorizontalAlignment="Stretch">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4">
+            <TextBlock Text="SkyMusicPlay 设置" Classes="sky-section-title" />
+            <TextBlock Text="管理游戏适配、外部工具、音频插件和运行环境" Classes="sky-secondary" />
+          </StackPanel>
+          <Button Grid.Column="1" Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                  Content="保存设置" Command="{Binding SaveCommand}" />
+        </Grid>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="常规" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,12,Auto">
+              <StackPanel>
+                <TextBlock Text="默认游戏" Classes="sky-card-title" />
+                <TextBlock Text="默认保持光遇 15 键" Classes="sky-caption" Margin="0,3,0,0" />
+              </StackPanel>
+              <ComboBox Grid.Column="1" SelectedValue="{Binding DefaultPlaybackTargetId}" SelectedValueBinding="{Binding Tag}">
+                <ComboBoxItem Content="光遇 · 15 键" Tag="sky-15" />
+                <ComboBoxItem Content="原神 · 21 键" Tag="genshin-21" />
+              </ComboBox>
+              <TextBlock Grid.Row="2" Text="目标窗口" Classes="sky-card-title" VerticalAlignment="Center" />
+              <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding RememberLastTarget}"
+                        Content="记住上次选择的游戏和窗口" />
+            </Grid>
+            <Button Theme="{StaticResource SkyCommandButtonTheme}" HorizontalAlignment="Left"
+                    Content="管理按键映射" Command="{Binding OpenKeyMappingCommand}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="外部工具" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,10,Auto,10,Auto">
+              <TextBlock Text="FFmpeg" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding FfmpegPath}" PlaceholderText="自动搜索 PATH 和 PianoTrans 扩展" />
+              <Button Grid.Column="2" Margin="8,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                      Content="浏览" Click="SelectFfmpeg_OnClick" />
+
+              <TextBlock Grid.Row="2" Text="PianoTrans" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding PianoTransPath}" PlaceholderText="自动搜索 PianoTrans-v1.0" />
+              <Button Grid.Row="2" Grid.Column="2" Margin="8,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                      Content="浏览" Click="SelectPianoTrans_OnClick" />
+
+              <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="12">
+                <Button Theme="{StaticResource SkyCommandButtonTheme}" Content="检测 FFmpeg"
+                        Command="{Binding DetectFfmpegCommand}" />
+                <TextBlock Text="{Binding FfmpegStatus}" Classes="sky-secondary" TextWrapping="Wrap"
+                           VerticalAlignment="Center" MaxWidth="620" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="音频与插件" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,12,Auto">
+              <StackPanel>
+                <TextBlock Text="VST3 搜索目录" Classes="sky-card-title" />
+                <TextBlock Text="每行一个目录，空白时使用系统目录" Classes="sky-caption" Margin="0,3,0,0" />
+              </StackPanel>
+              <TextBox Grid.Column="1" Text="{Binding Vst3SearchPaths}" AcceptsReturn="True" MinHeight="64" />
+              <StackPanel Grid.Row="2">
+                <TextBlock Text="音频缓冲区" Classes="sky-card-title" />
+                <TextBlock Text="为后续宿主配置预留，当前由 WASAPI 协商" Classes="sky-caption" Margin="0,3,0,0" />
+              </StackPanel>
+              <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="64" Maximum="4096" Increment="64"
+                             Value="{Binding AudioBufferSize}" Width="160" HorizontalAlignment="Left" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="性能" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,12,Auto">
+              <TextBlock Text="执行模式" Classes="sky-card-title" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding PerformanceModes}"
+                        SelectedItem="{Binding SelectedPerformanceMode}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate><TextBlock Text="{Binding Label}" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <StackPanel Grid.Row="2">
+                <TextBlock Text="最大并发数" Classes="sky-card-title" />
+                <TextBlock Text="不区分 Intel 与 AMD" Classes="sky-caption" Margin="0,3,0,0" />
+              </StackPanel>
+              <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="1" Maximum="256"
+                             Value="{Binding MaximumConcurrency}" Width="160" HorizontalAlignment="Left" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="网络与存储" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,10,Auto,10,Auto">
+              <TextBlock Text="云服务地址" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding CloudServiceUrl}" />
+              <TextBlock Grid.Row="2" Text="请求超时" Classes="sky-card-title" VerticalAlignment="Center" />
+              <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="1" Maximum="120"
+                             Value="{Binding NetworkTimeoutSeconds}" Width="160" HorizontalAlignment="Left" />
+              <TextBlock Grid.Row="2" Grid.Column="2" Text="秒" Classes="sky-secondary" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <TextBlock Grid.Row="4" Text="缓存目录" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding CacheDirectory}" PlaceholderText="留空使用系统默认目录" />
+              <Button Grid.Row="4" Grid.Column="2" Margin="8,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                      Content="浏览" Click="SelectCache_OnClick" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="{Binding StatusText}" Classes="sky-secondary" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

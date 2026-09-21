@@ -1,0 +1,12 @@
+<!-- 模块：SkyMusic.App 自定义控件 SkySectionHeader -->
+<UserControl x:Class="SkyMusic.App.Controls.SkySectionHeader"
+             x:Name="Root"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid ColumnDefinitions="*,Auto">
+    <TextBlock Text="{Binding Title, ElementName=Root}" Classes="sky-section-title"
+               VerticalAlignment="Center" />
+    <TextBlock Grid.Column="1" Text="{Binding Hint, ElementName=Root}" Classes="sky-caption"
+               VerticalAlignment="Center" />
+  </Grid>
+</UserControl>

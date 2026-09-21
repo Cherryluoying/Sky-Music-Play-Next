@@ -1,0 +1,59 @@
+<!-- 模块：SkyMusic.App 页面视图 ScoreEditorView -->
+<UserControl x:Class="SkyMusic.App.Views.ScoreEditorView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="TXT 谱编辑器" ShowForward="True" />
+    <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="28,16,28,28">
+      <Grid ColumnDefinitions="*,12,220,Auto" RowDefinitions="Auto,10,Auto">
+        <TextBox PlaceholderText="乐谱名称" Text="{Binding Title}" />
+        <TextBox Grid.Column="2" PlaceholderText="作者" Text="{Binding Composer}" />
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+          <Button Theme="{StaticResource SkyCommandButtonTheme}" Content="导入" Click="Import_OnClick" />
+          <Button Theme="{StaticResource SkyCommandButtonTheme}" Content="保存" Click="Export_OnClick" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" Grid.ColumnSpan="4" ColumnDefinitions="Auto,8,Auto,8,Auto,*">
+          <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Command="{Binding AddNoteCommand}" Content="添加音符" />
+          <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding UndoCommand}" Content="撤销" />
+          <Button Grid.Column="4" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding RedoCommand}" Content="重做" />
+          <TextBlock Grid.Column="5" Text="{Binding StatusText}" Classes="sky-secondary"
+                     HorizontalAlignment="Right" VerticalAlignment="Center" />
+        </Grid>
+      </Grid>
+
+      <Border Grid.Row="1" Margin="0,16,0,0" Background="{StaticResource SkyBrushSurface}"
+              BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1"
+              CornerRadius="{StaticResource SkyCornerCard}" Padding="14">
+        <Grid RowDefinitions="34,*">
+          <Grid ColumnDefinitions="70,90,130,130,90,*">
+            <TextBlock Text="音名" Classes="sky-caption" />
+            <TextBlock Grid.Column="1" Text="MIDI" Classes="sky-caption" />
+            <TextBlock Grid.Column="2" Text="开始 ms" Classes="sky-caption" />
+            <TextBlock Grid.Column="3" Text="时长 ms" Classes="sky-caption" />
+            <TextBlock Grid.Column="4" Text="力度" Classes="sky-caption" />
+          </Grid>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Notes}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="70,90,130,130,90,*" MinHeight="42">
+                    <TextBlock Text="{Binding NoteName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Column="1" Minimum="21" Maximum="108" Increment="1" Value="{Binding MidiNote}" Margin="0,3,8,3" />
+                    <NumericUpDown Grid.Column="2" Minimum="0" Maximum="3600000" Increment="10" Value="{Binding StartMilliseconds}" Margin="0,3,8,3" />
+                    <NumericUpDown Grid.Column="3" Minimum="10" Maximum="60000" Increment="10" Value="{Binding DurationMilliseconds}" Margin="0,3,8,3" />
+                    <NumericUpDown Grid.Column="4" Minimum="1" Maximum="127" Increment="1" Value="{Binding Velocity}" Margin="0,3,8,3" />
+                    <Button Grid.Column="5" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE74D;"
+                            HorizontalAlignment="Right" Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                            CommandParameter="{Binding}" ToolTip.Tip="删除音符" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

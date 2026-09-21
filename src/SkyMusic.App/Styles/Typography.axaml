@@ -1,0 +1,36 @@
+<!-- 模块：SkyMusic.App 视觉样式 Typography -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBlock.sky-page-title">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizePageTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-section-title">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeSectionTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-card-title">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeCardTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-body">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeBody}" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-secondary">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeSecondary}" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextSecondary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-caption">
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeCaption}" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextTertiary}" />
+  </Style>
+</Styles>

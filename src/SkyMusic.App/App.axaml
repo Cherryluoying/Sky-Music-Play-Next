@@ -1,0 +1,17 @@
+<!-- 模块：SkyMusic.App 通用模型 App -->
+<Application
+    x:Class="SkyMusic.App.App"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Application.Styles>
+    <FluentTheme DensityStyle="Compact" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/DesignTokens.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/Theme.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/Typography.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/ComponentButtons.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/ComponentNavigation.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/ComponentMusic.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/ComponentInputs.axaml" />
+    <StyleInclude Source="avares://SkyMusic.App/Styles/WorkbenchStyles.axaml" />
+  </Application.Styles>
+</Application>

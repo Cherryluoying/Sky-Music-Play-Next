@@ -1,0 +1,69 @@
+<!-- 模块：SkyMusic.App 页面视图 KeyMappingView -->
+<UserControl x:Class="SkyMusic.App.Views.KeyMappingView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="按键映射" ShowForward="True" />
+    <Grid Grid.Row="1" ColumnDefinitions="230,20,*" Margin="28,18,28,28">
+      <Grid RowDefinitions="Auto,10,*,12,Auto">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="映射方案" Classes="sky-section-title" />
+          <Button Grid.Column="1" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE710;"
+                  Command="{Binding NewCommand}" ToolTip.Tip="新建映射" />
+        </Grid>
+        <ListBox Grid.Row="2" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                 Background="Transparent" BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" Margin="8,7" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Grid.Row="4" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding DeleteCommand}" Content="删除当前方案" />
+      </Grid>
+
+      <Border Grid.Column="2" Background="{StaticResource SkyBrushSurface}" BorderBrush="{StaticResource SkyBrushBorder}"
+              BorderThickness="1" CornerRadius="{StaticResource SkyCornerCard}" Padding="18">
+        <Grid RowDefinitions="Auto,14,Auto,14,Auto,10,*">
+          <Grid ColumnDefinitions="*,14,*">
+            <StackPanel>
+              <TextBlock Text="方案名称" Classes="sky-caption" Margin="0,0,0,6" />
+              <TextBox Text="{Binding MappingName}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="目标进程名" Classes="sky-caption" Margin="0,0,0,6" />
+              <TextBox Text="{Binding ProcessNames}" PlaceholderText="Sky, GenshinImpact" />
+            </StackPanel>
+          </Grid>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto,8,Auto">
+            <TextBlock Text="键位" Classes="sky-section-title" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding AddEntryCommand}" Content="添加键位" />
+            <Button Grid.Column="3" Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Command="{Binding SaveCommand}" Content="保存方案" />
+          </Grid>
+
+          <TextBlock Grid.Row="4" Text="{Binding StatusText}" Classes="sky-secondary" />
+
+          <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Entries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="70,100,130,100,*" MinHeight="44">
+                    <TextBlock Text="{Binding NoteName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Column="1" Minimum="21" Maximum="108" Value="{Binding MidiNote}" Margin="0,4,10,4" />
+                    <NumericUpDown Grid.Column="2" Minimum="1" Maximum="65535" Value="{Binding ScanCode}" Margin="0,4,10,4" />
+                    <CheckBox Grid.Column="3" IsChecked="{Binding IsExtended}" Content="扩展键" VerticalAlignment="Center" />
+                    <Button Grid.Column="4" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE74D;" HorizontalAlignment="Right"
+                            Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                            CommandParameter="{Binding}" ToolTip.Tip="删除键位" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

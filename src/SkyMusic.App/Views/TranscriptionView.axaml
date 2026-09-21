@@ -1,0 +1,55 @@
+<!-- 模块：SkyMusic.App 页面视图 TranscriptionView -->
+<UserControl x:Class="SkyMusic.App.Views.TranscriptionView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="音频转 MIDI" ShowForward="True" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,20,28,40" Spacing="20" MaxWidth="920" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="5">
+          <TextBlock Text="PianoTrans 扩展" Classes="sky-section-title" />
+          <TextBlock Text="调用独立扩展包分析钢琴音频，主程序不嵌入 Python 或 PyTorch"
+                     Classes="sky-secondary" />
+        </StackPanel>
+
+        <Border Background="{StaticResource SkyBrushSurface}" BorderBrush="{StaticResource SkyBrushBorder}"
+                BorderThickness="1" CornerRadius="{StaticResource SkyCornerCard}" Padding="20">
+          <Grid RowDefinitions="Auto,18,Auto,18,Auto" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{Binding SourceText}" Classes="sky-card-title" />
+              <TextBlock Text="{Binding AdapterName}" Classes="sky-caption" Margin="0,5,0,0" />
+            </StackPanel>
+            <Border Grid.Column="1" Background="{StaticResource SkyBrushAccentSoft}"
+                    CornerRadius="{StaticResource SkyCornerMedium}" Padding="10,5">
+              <TextBlock Text="外部扩展" Foreground="{StaticResource SkyBrushAccent}" FontSize="11" />
+            </Border>
+
+            <CheckBox Grid.Row="2" Grid.ColumnSpan="2" IsChecked="{Binding CpuOnly}"
+                      Content="仅使用 CPU（显卡兼容异常时启用）" IsEnabled="{Binding !IsRunning}" />
+
+            <Grid Grid.Row="4" Grid.ColumnSpan="2" ColumnDefinitions="Auto,Auto,Auto,*">
+              <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Content="选择音频并转写"
+                      IsEnabled="{Binding IsAvailable}" Click="SelectAudio_OnClick" />
+              <Button Grid.Column="1" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}" Content="取消"
+                      Command="{Binding CancelCommand}" />
+              <Button Grid.Column="2" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}" Content="在演奏任务中打开"
+                      Command="{Binding OpenMidiCommand}" />
+              <TextBlock Grid.Column="3" Text="{Binding StatusText}" Classes="sky-secondary"
+                         TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+          </Grid>
+        </Border>
+
+        <Border IsVisible="{Binding HasMidi}" Background="{StaticResource SkyBrushAccentSoft}"
+                CornerRadius="{StaticResource SkyCornerMedium}" Padding="16">
+          <StackPanel Spacing="4">
+            <TextBlock Text="MIDI 输出" FontWeight="SemiBold" Foreground="{StaticResource SkyBrushAccent}" />
+            <TextBlock Text="{Binding MidiPath}" Classes="sky-secondary" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

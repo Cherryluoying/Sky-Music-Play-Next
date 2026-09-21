@@ -1,0 +1,60 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerGameKeyboard -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerGameKeyboard"
+             x:Name="KeyboardRoot"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid ClipToBounds="True">
+    <Image Source="{Binding BackgroundArtwork}" Stretch="UniformToFill" Opacity="0.48" />
+    <Border Background="#8F0B121A" />
+    <Grid Margin="18,12,18,14" RowDefinitions="Auto,*">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="游戏键盘" Classes="composer-label" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ProfileName}" Classes="composer-muted" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="{Binding ColumnSummary}" Classes="composer-muted" />
+      </Grid>
+      <ItemsControl Grid.Row="1" ItemsSource="{Binding Pads}"
+                    MaxWidth="{Binding KeyboardMaxWidth}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel HorizontalAlignment="Center" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:ComposerPadViewModel">
+            <ToggleButton Classes="game-key"
+                          Classes.genshin="{Binding IsGenshin}"
+                          IsChecked="{Binding IsActive}"
+                          Command="{Binding #KeyboardRoot.DataContext.TogglePadCommand}"
+                          CommandParameter="{Binding Index}">
+              <Grid>
+                <Path Width="34" Height="34" Data="{Binding Glyph}" Stretch="Uniform"
+                      IsVisible="{Binding IsSky}"
+                      Fill="Transparent"
+                      Stroke="{Binding $parent[ToggleButton].Foreground}"
+                      StrokeThickness="2.4"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Path Width="34" Height="34" Data="{Binding Glyph}" Stretch="Uniform"
+                      IsVisible="{Binding IsGenshin}"
+                      Fill="{Binding $parent[ToggleButton].Foreground}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding NoteName}" IsVisible="{Binding IsCustom}"
+                           FontSize="14" FontWeight="SemiBold"
+                           Foreground="{Binding $parent[ToggleButton].Foreground}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Background="#990B121A" CornerRadius="8" Padding="4,1"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,4">
+                  <TextBlock Text="{Binding Label}" FontSize="9"
+                             Foreground="{Binding $parent[ToggleButton].Foreground}" />
+                </Border>
+              </Grid>
+            </ToggleButton>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,22 @@
+<!-- 模块：SkyMusic.App 页面视图 RecentView -->
+<UserControl x:Class="SkyMusic.App.Views.RecentView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="最近播放" />
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,18,28,40">
+        <TextBlock Text="按最近播放排序" Classes="sky-secondary" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding Playback.RecentTracks}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:TrackRow />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

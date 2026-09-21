@@ -1,0 +1,117 @@
+<!-- 模块：SkyMusic.App 视觉样式 ComponentInputs -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="SkySliderDecreaseTheme" TargetType="RepeatButton">
+      <Setter Property="Background" Value="{StaticResource SkyBrushAccent}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="2" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkySliderIncreaseTheme" TargetType="RepeatButton">
+      <Setter Property="Background" Value="{StaticResource SkyBrushBorder}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="2" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkySliderThumbTheme" TargetType="Thumb">
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Height" Value="12" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root" Background="{StaticResource SkyBrushAccent}"
+                  BorderBrush="White" BorderThickness="2" CornerRadius="6" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{StaticResource SkyBrushAccentHover}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkyProgressBarTheme" TargetType="Slider">
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid Height="20">
+            <Track x:Name="PART_Track" Height="4" VerticalAlignment="Center"
+                   Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value}" Orientation="{TemplateBinding Orientation}">
+              <Track.DecreaseButton>
+                <RepeatButton Theme="{StaticResource SkySliderDecreaseTheme}" />
+              </Track.DecreaseButton>
+              <Track.Thumb>
+                <Thumb Theme="{StaticResource SkySliderThumbTheme}" />
+              </Track.Thumb>
+              <Track.IncreaseButton>
+                <RepeatButton Theme="{StaticResource SkySliderIncreaseTheme}" />
+              </Track.IncreaseButton>
+            </Track>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SkyMiniProgressRailTheme" TargetType="Slider">
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid Height="14">
+            <Track x:Name="PART_Track" Height="2" VerticalAlignment="Center"
+                   Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value}" Orientation="{TemplateBinding Orientation}">
+              <Track.DecreaseButton>
+                <RepeatButton Theme="{StaticResource SkySliderDecreaseTheme}" />
+              </Track.DecreaseButton>
+              <Track.Thumb>
+                <Thumb Theme="{StaticResource SkySliderThumbTheme}" />
+              </Track.Thumb>
+              <Track.IncreaseButton>
+                <RepeatButton Theme="{StaticResource SkySliderIncreaseTheme}" />
+              </Track.IncreaseButton>
+            </Track>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <Style Selector="Border.sky-search">
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="19" />
+  </Style>
+  <Style Selector="Border.sky-search:pointerover">
+    <Setter Property="Background" Value="{StaticResource SkyBrushSurface}" />
+    <Setter Property="BorderBrush" Value="{StaticResource SkyBrushBorder}" />
+  </Style>
+  <Style Selector="Border.sky-search:focus-within">
+    <Setter Property="Background" Value="{StaticResource SkyBrushSurface}" />
+    <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+  </Style>
+  <Style Selector="TextBox.sky-search-input">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeBody}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.sky-search-input /template/ Border#PART_Border">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TextBox.sky-search-input:pointerover /template/ Border#PART_Border">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.sky-search-input:focus /template/ Border#PART_Border">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+</Styles>

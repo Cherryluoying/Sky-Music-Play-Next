@@ -1,0 +1,23 @@
+<!-- 模块：SkyMusic.App 页面视图 LibraryView -->
+<UserControl x:Class="SkyMusic.App.Views.LibraryView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="乐谱库" ShowForward="True" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,18,28,40">
+        <controls:SkySectionHeader Title="全部乐谱" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding Playback.Queue}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:TrackRow />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

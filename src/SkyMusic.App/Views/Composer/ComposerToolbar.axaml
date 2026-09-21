@@ -1,0 +1,41 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerToolbar -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerToolbar"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border Background="#E917212D" BorderBrush="#344659" BorderThickness="0,0,0,1" Padding="14,0">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+      <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <Button Classes="composer-icon" Content="&#xE7A7;" ToolTip.Tip="撤销" Command="{Binding UndoCommand}" />
+        <Button Classes="composer-icon" Content="&#xE7A6;" ToolTip.Tip="重做" Command="{Binding RedoCommand}" />
+        <Border Width="1" Height="19" Background="{StaticResource ComposerBrushBorder}" Margin="5,0" />
+        <Button Classes="composer-icon" Content="&#xE8C8;" ToolTip.Tip="复制选区" Command="{Binding CopyCommand}" />
+        <Button Classes="composer-icon" Content="&#xE77F;" ToolTip.Tip="插入粘贴" Command="{Binding PasteCommand}" />
+        <Button Classes="composer-icon" Content="&#xE8B0;" ToolTip.Tip="合并粘贴" Command="{Binding MergePasteCommand}" />
+        <Button Classes="composer-icon" Content="&#xE74D;" ToolTip.Tip="擦除当前图层" Command="{Binding EraseCommand}" />
+        <Border Width="1" Height="19" Background="{StaticResource ComposerBrushBorder}" Margin="5,0" />
+        <Button Classes="composer-icon" Content="&#xE74A;" ToolTip.Tip="音符上移" Command="{Binding MoveUpCommand}" />
+        <Button Classes="composer-icon" Content="&#xE74B;" ToolTip.Tip="音符下移" Command="{Binding MoveDownCommand}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                  VerticalAlignment="Center" Spacing="7">
+        <Button Classes="composer-command" Classes.active="{Binding IsSkyProfile}"
+                Content="光遇" Command="{Binding SelectProfileCommand}"
+                CommandParameter="Sky" />
+        <Button Classes="composer-command" Classes.active="{Binding IsGenshinProfile}"
+                Content="原神" Command="{Binding SelectProfileCommand}"
+                CommandParameter="Genshin" />
+        <Button Classes="composer-command" Classes.active="{Binding IsCustomProfile}"
+                Content="自定义" Command="{Binding SelectProfileCommand}"
+                CommandParameter="Custom" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+        <ToggleButton Classes="composer-command" Content="连续选择"
+                      IsChecked="{Binding RangeSelectionEnabled, Mode=TwoWay}" />
+        <Button Classes="composer-icon" Content="&#xE713;" ToolTip.Tip="编谱设置"
+                Command="{Binding ToggleSettingsCommand}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

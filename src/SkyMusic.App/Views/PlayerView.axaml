@@ -1,0 +1,63 @@
+<!-- 模块：SkyMusic.App 页面视图 PlayerView -->
+<UserControl x:Class="SkyMusic.App.Views.PlayerView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid ClipToBounds="True">
+    <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" Opacity="0.09" />
+    <Border Background="{StaticResource SkyBrushBackground}" Opacity="0.94" />
+
+    <Grid RowDefinitions="56,*">
+      <Grid Margin="24,0,0,0" ColumnDefinitions="Auto,*,Auto,Auto">
+        <Grid.RenderTransform>
+          <TranslateTransform Y="5" />
+        </Grid.RenderTransform>
+        <Button Theme="{StaticResource SkyIconButtonTheme}"
+                Command="{Binding DataContext.ClosePlayerCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                Content="&#xE72B;" ToolTip.Tip="返回" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Border Width="7" Height="7" CornerRadius="{StaticResource SkyCornerSmall}"
+                  Background="{StaticResource SkyBrushAccent}" />
+          <TextBlock Text="正在播放" Classes="sky-secondary" FontWeight="SemiBold" />
+        </StackPanel>
+        <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE712;"
+                IsHitTestVisible="False" Opacity="0.45"
+                ToolTip.Tip="播放页设置待接入" VerticalAlignment="Center" />
+        <Border Grid.Column="3" MinWidth="144"
+                Width="{Binding WindowDecorationMargin.Right, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
+      </Grid>
+
+      <Grid Grid.Row="1" ColumnDefinitions="44*,56*" Margin="48,12,48,28">
+        <Grid Grid.Column="0" RowDefinitions="*,Auto" Margin="0,0,46,0">
+          <Border Width="320" Height="320" MaxWidth="320" MaxHeight="320"
+                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                  CornerRadius="{StaticResource SkyCornerPlayer}"
+                  Background="{StaticResource SkyBrushPlaceholder}"
+                  BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1"
+                  BoxShadow="{StaticResource SkyElevationLow}" ClipToBounds="True">
+            <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="4" Margin="0,16,0,0">
+            <TextBlock Text="{Binding CurrentItem.Album}" Classes="sky-secondary" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="SkyMusicPlay 乐谱来源" Classes="sky-caption"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Column="1" RowDefinitions="Auto,*" MinWidth="360">
+          <StackPanel Spacing="7" Margin="0,12,0,22">
+            <TextBlock Text="{Binding CurrentItem.Title}" FontSize="30" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <TextBlock Text="{Binding CurrentItem.Artist}" Classes="sky-secondary" FontSize="13" />
+              <TextBlock Text="{Binding CurrentItem.Album}" Classes="sky-caption" FontSize="13" />
+            </StackPanel>
+          </StackPanel>
+          <controls:LyricsView Grid.Row="1" />
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

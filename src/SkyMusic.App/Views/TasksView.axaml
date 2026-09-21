@@ -1,0 +1,165 @@
+<!-- 模块：SkyMusic.App 页面视图 TasksView -->
+<UserControl x:Class="SkyMusic.App.Views.TasksView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="{Binding Title}" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <Grid Margin="28,20,28,40" RowDefinitions="Auto,20,Auto" MaxWidth="880"
+            HorizontalAlignment="Stretch">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4">
+            <TextBlock Text="自动演奏" Classes="sky-section-title" />
+            <TextBlock Text="导入乐谱并选择目标输出" Classes="sky-secondary" />
+          </StackPanel>
+          <Button Grid.Column="1" Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                  Click="ImportScore_OnClick">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" />
+              <TextBlock Text="导入乐谱" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource SkyBrushSurface}"
+                BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1"
+                CornerRadius="{StaticResource SkyCornerPlayer}" Padding="24">
+          <Grid RowDefinitions="Auto,24,Auto,24,Auto,24,Auto">
+            <Grid ColumnDefinitions="56,*,Auto">
+              <Border Width="48" Height="48" CornerRadius="{StaticResource SkyCornerMedium}"
+                      Background="{StaticResource SkyBrushAccentSoft}">
+                <TextBlock Text="&#xEC4F;" FontFamily="Segoe Fluent Icons" FontSize="20"
+                           Foreground="{StaticResource SkyBrushAccent}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="3">
+                <TextBlock Text="{Binding ScoreTitle}" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding StatusText}" Classes="sky-secondary" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding NoteCount, StringFormat={}{0} 个音符}" FontWeight="SemiBold"
+                           HorizontalAlignment="Right" />
+                <TextBlock Text="{Binding TimeText}" Classes="sky-caption" HorizontalAlignment="Right" />
+              </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="2" RowDefinitions="Auto,8,Auto,16,Auto,8,Auto">
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Text="输出目标" Classes="sky-card-title" />
+                <TextBlock Grid.Column="1" Text="{Binding TargetDescription}" Classes="sky-caption"
+                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+              </Grid>
+              <ComboBox Grid.Row="2" ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}"
+                        HorizontalAlignment="Stretch" MinHeight="38">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding KeyCount, StringFormat={}{0} 键}"
+                                 Classes="sky-caption" Margin="16,0,0,0" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+
+              <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding RequiresWindow}">
+                <TextBlock Text="游戏窗口" Classes="sky-card-title" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="开始前自动切换到所选窗口" Classes="sky-caption"
+                           HorizontalAlignment="Right" Margin="12,0" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}"
+                        Command="{Binding RefreshWindowsCommand}" ToolTip.Tip="刷新窗口">
+                  <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons" />
+                </Button>
+              </Grid>
+              <ComboBox Grid.Row="6" ItemsSource="{Binding Windows}" SelectedItem="{Binding SelectedWindow}"
+                        IsVisible="{Binding RequiresWindow}" HorizontalAlignment="Stretch" MinHeight="38"
+                        PlaceholderText="请选择游戏窗口">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
+
+            <Grid Grid.Row="4" ColumnDefinitions="*,16,*">
+              <Grid RowDefinitions="Auto,8,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Text="音符间隔" Classes="sky-card-title" />
+                  <TextBlock Text="实时" Classes="sky-caption" Foreground="{StaticResource SkyBrushAccent}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+                <Grid Grid.Row="2" ColumnDefinitions="36,*,36">
+                  <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding IntervalDownCommand}"
+                          Width="36" Padding="0" Content="−" ToolTip.Tip="每个起音间隔减少 10 ms" />
+                  <Border Grid.Column="1" Height="36" Margin="8,0" Background="{StaticResource SkyBrushSurfaceSecondary}"
+                          CornerRadius="{StaticResource SkyCornerMedium}">
+                    <TextBlock Text="{Binding IntervalAdjustmentText}" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding IntervalUpCommand}"
+                          Width="36" Padding="0" Content="+" ToolTip.Tip="每个起音间隔增加 10 ms" />
+                </Grid>
+              </Grid>
+
+              <Grid Grid.Column="2" RowDefinitions="Auto,8,Auto">
+                <TextBlock Text="松键延迟" Classes="sky-card-title" />
+                <Grid Grid.Row="2" ColumnDefinitions="36,*,36">
+                  <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding ReleaseDelayDownCommand}"
+                          Width="36" Padding="0" Content="−" ToolTip.Tip="音符持续时间减少 10 ms" />
+                  <Border Grid.Column="1" Height="36" Margin="8,0" Background="{StaticResource SkyBrushSurfaceSecondary}"
+                          CornerRadius="{StaticResource SkyCornerMedium}">
+                    <TextBlock Text="{Binding KeyReleaseDelayText}" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding ReleaseDelayUpCommand}"
+                          Width="36" Padding="0" Content="+" ToolTip.Tip="音符持续时间增加 10 ms" />
+                </Grid>
+              </Grid>
+            </Grid>
+
+            <Grid Grid.Row="6" RowDefinitions="Auto,14,Auto">
+              <Slider Minimum="0" Maximum="100" Value="{Binding Progress}"
+                      Theme="{StaticResource SkyProgressBarTheme}" IsEnabled="{Binding HasScore}" />
+              <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding SpeedDownCommand}"
+                          Width="36" Padding="0" Content="−" />
+                  <Border MinWidth="54" Height="36" Background="{StaticResource SkyBrushSurfaceSecondary}"
+                          CornerRadius="{StaticResource SkyCornerMedium}">
+                    <TextBlock Text="{Binding SpeedText}" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding SpeedUpCommand}"
+                          Width="36" Padding="0" Content="+" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                  <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                          Command="{Binding StartPauseCommand}" MinWidth="104">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding PlayGlyph}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding PlayLabel}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Theme="{StaticResource SkyCommandButtonTheme}" Command="{Binding StopCommand}"
+                          Width="40" Padding="0" ToolTip.Tip="停止">
+                    <TextBlock Text="&#xE71A;" FontFamily="Segoe Fluent Icons" />
+                  </Button>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <TextBlock Text="&#xE7F8;" FontFamily="Segoe Fluent Icons"
+                             Foreground="{StaticResource SkyBrushTextSecondary}" />
+                  <TextBlock Text="前台输入" Classes="sky-caption" VerticalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

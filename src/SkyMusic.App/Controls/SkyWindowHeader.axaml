@@ -1,0 +1,30 @@
+<!-- 模块：SkyMusic.App 自定义控件 SkyWindowHeader -->
+<UserControl x:Class="SkyMusic.App.Controls.SkyWindowHeader"
+             x:Name="Root"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Height="56" ColumnDefinitions="Auto,*,Auto,Auto" Margin="24,0,0,0">
+    <Grid.RenderTransform>
+      <TranslateTransform Y="5" />
+    </Grid.RenderTransform>
+    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+      <Button Theme="{StaticResource SkyIconButtonTheme}"
+              IsVisible="{Binding ShowBack, ElementName=Root}"
+              Command="{Binding DataContext.BackCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+              Content="&#xE72B;" ToolTip.Tip="后退" />
+      <Button Theme="{StaticResource SkyIconButtonTheme}"
+              IsVisible="{Binding ShowForward, ElementName=Root}"
+              Command="{Binding DataContext.ForwardCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+              Content="&#xE72A;" ToolTip.Tip="前进" />
+    </StackPanel>
+
+    <TextBlock Grid.Column="1" Text="{Binding Title, ElementName=Root}"
+               Classes="sky-page-title" VerticalAlignment="Center" Margin="16,0" />
+
+    <ContentControl Grid.Column="2" Content="{Binding TrailingContent, ElementName=Root}"
+                    Width="300" VerticalAlignment="Center" />
+
+    <Border Grid.Column="3" MinWidth="144"
+            Width="{Binding WindowDecorationMargin.Right, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
+  </Grid>
+</UserControl>

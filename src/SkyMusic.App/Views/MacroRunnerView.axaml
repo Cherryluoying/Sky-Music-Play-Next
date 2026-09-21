@@ -1,0 +1,63 @@
+<!-- 模块：SkyMusic.App 页面视图 MacroRunnerView -->
+<UserControl x:Class="SkyMusic.App.Views.MacroRunnerView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="宏脚本" ShowForward="True" />
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,20,28,40" Spacing="20" MaxWidth="920" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="5">
+          <TextBlock Text="键盘自动化" Classes="sky-section-title" />
+          <TextBlock Text="兼容原版 key / type / delay 格式，仅执行白名单键盘事件"
+                     Classes="sky-secondary" />
+        </StackPanel>
+
+        <Border Background="{StaticResource SkyBrushSurface}" BorderBrush="{StaticResource SkyBrushBorder}"
+                BorderThickness="1" CornerRadius="{StaticResource SkyCornerCard}" Padding="20">
+          <Grid RowDefinitions="Auto,18,Auto,18,Auto" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{Binding ScriptName}" Classes="sky-card-title" />
+              <TextBlock Text="{Binding EventCount, StringFormat={}{0} 个键盘事件}" Classes="sky-caption" Margin="0,5,0,0" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource SkyCommandButtonTheme}"
+                    Content="导入脚本" Click="ImportMacro_OnClick" />
+
+            <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto">
+              <ComboBox ItemsSource="{Binding Windows}" SelectedItem="{Binding SelectedWindow}" MinWidth="360">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Button Grid.Column="1" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                      Content="刷新窗口" Command="{Binding RefreshWindowsCommand}" />
+            </Grid>
+
+            <Grid Grid.Row="4" Grid.ColumnSpan="2" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+              <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" MinWidth="88"
+                      Content="{Binding PlayLabel}" Command="{Binding StartPauseCommand}" />
+              <Button Grid.Column="1" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                      Content="停止" Command="{Binding StopCommand}" />
+              <Button Grid.Column="2" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}" Width="36" Padding="0"
+                      Content="−" Command="{Binding SpeedDownCommand}" />
+              <Border Grid.Column="3" Margin="10,0,0,0" MinWidth="56" Height="36" Background="{StaticResource SkyBrushSurfaceSecondary}"
+                      CornerRadius="{StaticResource SkyCornerMedium}">
+                <TextBlock Text="{Binding SpeedText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <Button Grid.Column="4" Margin="10,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}" Width="36" Padding="0"
+                      Content="+" Command="{Binding SpeedUpCommand}" />
+              <TextBlock Grid.Column="5" Text="{Binding StatusText}" Classes="sky-secondary"
+                         TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+          </Grid>
+        </Border>
+
+        <TextBlock Text="停止、暂停或执行异常时会释放当前按下的全部按键"
+                   Classes="sky-caption" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

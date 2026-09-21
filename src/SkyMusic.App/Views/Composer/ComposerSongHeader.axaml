@@ -1,0 +1,32 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerSongHeader -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerSongHeader"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border Background="#C91A2532" BorderBrush="#344659" BorderThickness="0,0,0,1" Padding="16,8">
+    <Grid ColumnDefinitions="Auto,12,*,Auto" VerticalAlignment="Center">
+      <Border Width="44" Height="44" CornerRadius="10" Background="#344A5D">
+        <Image Source="{Binding BackgroundArtwork}" Stretch="UniformToFill" Opacity="0.9" />
+      </Border>
+      <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+        <TextBlock Text="{Binding SongName}" Classes="composer-title" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="{Binding ProfileName}" Classes="composer-muted" />
+          <TextBlock Text="•" Classes="composer-muted" />
+          <TextBlock Text="{Binding DurationText}" Classes="composer-muted" />
+          <TextBlock Text="•" Classes="composer-muted" />
+          <TextBlock Text="{Binding SelectionSummary}" Classes="composer-muted" />
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+        <Button Classes="composer-command" Content="练习选区" Command="{Binding PreviewSelectionCommand}" />
+        <Button Width="44" Height="44" CornerRadius="22" Padding="0"
+                Background="{StaticResource ComposerBrushAccent}" BorderThickness="0"
+                Foreground="#102632" FontFamily="Segoe Fluent Icons" FontSize="18"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                Content="&#xE768;" ToolTip.Tip="预览游戏演奏" Command="{Binding PreviewCommand}" />
+        <Button Classes="composer-icon" Content="&#xE71A;" ToolTip.Tip="停止预览"
+                Command="{Binding StopPreviewCommand}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

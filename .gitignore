@@ -1,0 +1,30 @@
+# 模块：仓库忽略规则
+
+.vs/
+.idea/
+.vscode/
+artifacts/
+
+**/bin/
+**/obj/
+**/build/
+**/build-*/
+**/CMakeFiles/
+**/Testing/
+
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+*.pdb
+*.ilk
+*.exp
+*.lib
+
+# 第三方源码仓库已跟踪的构建配置与 Windows 依赖
+!third_party/RtMidi/msw/*.vcxproj.user
+!third_party/RtMidi/tests/*.vcxproj.user
+!third_party/essentia/packaging/win32_3rdparty/**/*.lib
+
+server/skymusic-cloud/data/
+third_party/vst3sdk/

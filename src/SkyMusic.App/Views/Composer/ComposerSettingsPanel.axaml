@@ -1,0 +1,116 @@
+<!-- 模块：SkyMusic.App 编谱视图 ComposerSettingsPanel -->
+<UserControl x:Class="SkyMusic.App.Views.Composer.ComposerSettingsPanel"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Border Width="340" MaxHeight="610" CornerRadius="12" Padding="14"
+          Background="#F2182533" BorderBrush="#566F84" BorderThickness="1"
+          BoxShadow="0 12 30 0 #66000000">
+    <Grid RowDefinitions="Auto,10,*">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="编谱设置" Classes="composer-title" FontSize="16" />
+          <TextBlock Text="乐器、节奏和 MIDI 转谱" Classes="composer-muted" Margin="0,2,0,0" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="composer-icon" Content="&#xE711;"
+                ToolTip.Tip="关闭" Command="{Binding ToggleSettingsCommand}" />
+      </Grid>
+      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="9">
+          <TextBlock Text="乐器音色" Classes="composer-label" FontWeight="SemiBold" />
+          <ListBox Classes="instrument-card-list" ItemsSource="{Binding AvailableInstruments}"
+                   SelectedItem="{Binding SelectedInstrument, Mode=TwoWay}" MaxHeight="194">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:InstrumentChoiceViewModel">
+                <Grid ColumnDefinitions="42,*" ColumnSpacing="8">
+                  <Border Width="40" Height="40" CornerRadius="9" Background="#4054697B">
+                    <Image Source="{Binding Artwork}" Stretch="Uniform" Opacity="0.92" />
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding DisplayName}" Classes="composer-label"
+                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Classes="composer-muted" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <Grid ColumnDefinitions="*,10,*">
+            <StackPanel Spacing="4">
+              <TextBlock Text="BPM" Classes="composer-muted" />
+              <NumericUpDown Minimum="20" Maximum="999" Value="{Binding Bpm, Mode=TwoWay}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="4">
+              <TextBlock Text="当前列时值" Classes="composer-muted" />
+              <ComboBox SelectedIndex="{Binding SelectedTempoStep, Mode=TwoWay}">
+                <ComboBoxItem Content="1 拍" />
+                <ComboBoxItem Content="1/2 拍" />
+                <ComboBoxItem Content="1/4 拍" />
+                <ComboBoxItem Content="1/8 拍" />
+              </ComboBox>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="图层别名" Classes="composer-muted" />
+          <TextBox Text="{Binding InstrumentAlias, Mode=TwoWay}" PlaceholderText="未设置" />
+          <TextBlock Text="图层音量" Classes="composer-muted" />
+          <Slider Minimum="0" Maximum="127" Value="{Binding InstrumentVolume, Mode=TwoWay}" />
+          <Grid ColumnDefinitions="*,*,*">
+            <CheckBox Content="显示" Foreground="{StaticResource ComposerBrushText}"
+                      IsChecked="{Binding InstrumentVisible, Mode=TwoWay}" />
+            <CheckBox Grid.Column="1" Content="静音" Foreground="{StaticResource ComposerBrushText}"
+                      IsChecked="{Binding InstrumentMuted, Mode=TwoWay}" />
+            <CheckBox Grid.Column="2" Content="混响" Foreground="{StaticResource ComposerBrushText}"
+                      IsChecked="{Binding Reverb, Mode=TwoWay}" />
+          </Grid>
+
+          <Expander Header="MIDI 转谱" Foreground="{StaticResource ComposerBrushText}">
+            <StackPanel Spacing="7" Margin="0,8,0,0">
+              <Grid ColumnDefinitions="*,8,*">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="半音移调" Classes="composer-muted" />
+                  <NumericUpDown Minimum="-48" Maximum="48" Value="{Binding MidiTranspose, Mode=TwoWay}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                  <TextBlock Text="八度折叠" Classes="composer-muted" />
+                  <NumericUpDown Minimum="0" Maximum="8" Value="{Binding MidiOctaveFold, Mode=TwoWay}" />
+                </StackPanel>
+              </Grid>
+              <Grid ColumnDefinitions="*,8,*">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="节奏精度" Classes="composer-muted" />
+                  <NumericUpDown Minimum="1" Maximum="4" Value="{Binding MidiPrecision, Mode=TwoWay}" />
+                </StackPanel>
+                <CheckBox Grid.Column="2" Content="保留临时音" VerticalAlignment="Bottom"
+                          Foreground="{StaticResource ComposerBrushText}"
+                          IsChecked="{Binding MidiIncludeAccidentals, Mode=TwoWay}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding MidiTracks}" IsVisible="{Binding HasMidiSource}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:MidiImportTrackViewModel">
+                    <Grid ColumnDefinitions="Auto,*,62" ColumnSpacing="6" Margin="0,2">
+                      <CheckBox IsChecked="{Binding IsIncluded, Mode=TwoWay}" />
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Name}" Classes="composer-label" />
+                        <TextBlock Text="{Binding Detail}" Classes="composer-muted" />
+                      </StackPanel>
+                      <NumericUpDown Grid.Column="2" Minimum="-48" Maximum="48"
+                                     Value="{Binding Transpose, Mode=TwoWay}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Classes="composer-command" Content="重新转换 MIDI"
+                      IsVisible="{Binding HasMidiSource}" Command="{Binding ReimportMidiCommand}" />
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</UserControl>

@@ -1,0 +1,64 @@
+<!-- 模块：SkyMusic.App 自定义控件 Sidebar -->
+<UserControl x:Class="SkyMusic.App.Controls.Sidebar"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Border Background="{StaticResource SkyBrushSurface}"
+          BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="0,0,1,0">
+    <Grid RowDefinitions="56,*,Auto">
+      <StackPanel Orientation="Horizontal" Margin="18,0,12,0" Spacing="10"
+                  VerticalAlignment="Center">
+        <StackPanel.RenderTransform>
+          <TranslateTransform Y="5" />
+        </StackPanel.RenderTransform>
+        <Border Width="32" Height="32" CornerRadius="{StaticResource SkyCornerMedium}"
+                Background="{StaticResource SkyBrushAccent}">
+          <TextBlock Text="&#xEC4F;" FontFamily="Segoe Fluent Icons" FontSize="17" Foreground="White"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="SkyMusicPlay" FontSize="14" FontWeight="SemiBold"
+                   VerticalAlignment="Center" />
+      </StackPanel>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="12,14,12,10" Spacing="2">
+          <TextBlock Text="创作" Classes="sky-caption" FontSize="11" Margin="9,4,0,6" />
+          <controls:SkyNavigationItem Label="创作工作区" Glyph="&#xE70F;"
+                                      Command="{Binding OpenWorkbenchCommand}" />
+
+          <TextBlock Text="浏览" Classes="sky-caption" FontSize="11" Margin="9,4,0,6" />
+          <ItemsControl ItemsSource="{Binding PrimaryNavigationItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:NavigationItemViewModel">
+                <controls:SkyNavigationItem Label="{Binding Label}" Glyph="{Binding Glyph}"
+                                            IsSelected="{Binding IsSelected}"
+                                            Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                            CommandParameter="{Binding}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="我的音乐" Classes="sky-caption" FontSize="11" Margin="9,20,0,6" />
+          <ItemsControl ItemsSource="{Binding MusicNavigationItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:NavigationItemViewModel">
+                <controls:SkyNavigationItem Label="{Binding Label}" Glyph="{Binding Glyph}"
+                                            IsSelected="{Binding IsSelected}"
+                                            Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                            CommandParameter="{Binding}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <controls:SkyNavigationItem Grid.Row="2" Margin="12,8,12,14"
+                                  Label="{Binding SettingsNavigationItem.Label}"
+                                  Glyph="{Binding SettingsNavigationItem.Glyph}"
+                                  IsSelected="{Binding SettingsNavigationItem.IsSelected}"
+                                  Command="{Binding NavigateCommand}"
+                                  CommandParameter="{Binding SettingsNavigationItem}" />
+    </Grid>
+  </Border>
+</UserControl>
