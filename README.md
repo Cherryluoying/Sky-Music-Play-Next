@@ -275,6 +275,7 @@ go run ./cmd/server
 - [ ] 将旧版识别模型转换为 ONNX 并完成 DirectML 一致性验证
 - [ ] 完成跟弹识别、透明提示层和全局热键
 - [ ] 扩展曲库持久化、在线内容 API 与更新系统
+- [ ] UI 重设计与动画加入
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
@@ -329,3 +330,7 @@ Sky Music Play Next 采用 [GNU Affero General Public License v3.0](LICENSE) 开
    未接受任何商业赞助或授权。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+
+<div align="center">
+  <img src="easter-egg.gif" width="98">
+</div>
