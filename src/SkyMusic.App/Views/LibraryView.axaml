@@ -5,12 +5,36 @@
              xmlns:controls="using:SkyMusic.App.Controls"
              xmlns:vm="using:SkyMusic.App.ViewModels">
   <Grid RowDefinitions="56,*">
-    <controls:SkyWindowHeader Title="乐谱库" ShowForward="True" />
+    <controls:SkyWindowHeader Title="本地歌单" ShowForward="True">
+      <controls:SkyWindowHeader.TrailingContent>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+          <controls:SkySearchBox Width="220" Text="{Binding SearchText}" Watermark="搜索歌曲、作者或歌手" />
+          <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Click="ImportMedia_OnClick">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <TextBlock Text="&#xE898;" FontFamily="Segoe Fluent Icons" />
+              <TextBlock Text="导入媒体" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </controls:SkyWindowHeader.TrailingContent>
+    </controls:SkyWindowHeader>
 
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="28,18,28,40">
-        <controls:SkySectionHeader Title="全部乐谱" Margin="0,0,0,14" />
-        <ItemsControl ItemsSource="{Binding Playback.Queue}">
+      <StackPanel Margin="28,18,28,40" Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="3">
+            <TextBlock Text="全部媒体" Classes="sky-section-title" />
+            <TextBlock Text="TXT、JSON、MIDI、MP3、WAV 等文件会统一进入播放列表" Classes="sky-secondary" />
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="sky-caption" VerticalAlignment="Center" />
+        </Grid>
+        <Grid ColumnDefinitions="36,50,*,130,52,40" Margin="0,2,0,0">
+          <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
+          <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
+          <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />
+          <TextBlock Grid.Column="4" Text="时长" Classes="sky-caption" HorizontalAlignment="Right" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Tracks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="vm:TrackItemViewModel">
               <controls:TrackRow />

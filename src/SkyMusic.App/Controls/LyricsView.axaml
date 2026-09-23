@@ -18,24 +18,56 @@
     <Style Selector="ListBox.lyrics ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
+    <Style Selector="Button.lyric-time">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="#8FFFFFFF" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Padding" Value="4,3" />
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Button.lyric-time:pointerover">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
   </UserControl.Styles>
 
   <ListBox x:Name="LyricsList" Classes="lyrics"
            ItemsSource="{Binding Lyrics}"
            SelectedIndex="{Binding CurrentLyricIndex, Mode=OneWay}"
            SelectionMode="Single"
-           IsHitTestVisible="False"
+           PointerWheelChanged="LyricsList_OnPointerWheelChanged"
            ScrollViewer.VerticalScrollBarVisibility="Hidden">
     <ListBox.ItemTemplate>
       <DataTemplate DataType="vm:LyricLineViewModel">
-        <TextBlock Text="{Binding Text}"
-                   Foreground="{Binding Foreground}"
-                   FontSize="{Binding FontSize}"
-                   FontWeight="SemiBold"
-                   Opacity="{Binding Opacity}"
-                   TextWrapping="Wrap"
-                   Margin="2,0,24,28"
-                   MinHeight="30" />
+        <Grid ColumnDefinitions="58,*" Margin="0,0,18,24" MinHeight="38">
+          <Grid VerticalAlignment="Stretch">
+            <Border Width="1" Background="#24FFFFFF" HorizontalAlignment="Right" Margin="0,0,7,0" />
+            <Button Classes="lyric-time" Content="{Binding TimestampText}"
+                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Click="Timeline_OnClick" ToolTip.Tip="跳转到此句" />
+            <Border Width="5" Height="5" CornerRadius="3" Background="#8FC5E8FF"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0" />
+          </Grid>
+          <TextBlock Grid.Column="1" Text="{Binding Text}"
+                     Foreground="{Binding Foreground}"
+                     FontSize="{Binding FontSize}"
+                     FontWeight="{Binding LineFontWeight}"
+                     Opacity="{Binding Opacity}"
+                     TextWrapping="Wrap"
+                     TextAlignment="Left"
+                     HorizontalAlignment="Stretch"
+                     Margin="18,0,0,0"
+                     MinHeight="32">
+            <TextBlock.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.26" />
+                <DoubleTransition Property="FontSize" Duration="0:0:0.26" />
+                <BrushTransition Property="Foreground" Duration="0:0:0.26" />
+              </Transitions>
+            </TextBlock.Transitions>
+          </TextBlock>
+        </Grid>
       </DataTemplate>
     </ListBox.ItemTemplate>
   </ListBox>

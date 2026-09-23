@@ -3,11 +3,27 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style Selector="Window">
     <Setter Property="Background" Value="{StaticResource SkyBrushBackground}" />
-    <Setter Property="FontFamily" Value="Inter, Microsoft YaHei UI, Segoe UI" />
+    <Setter Property="FontFamily" Value="{StaticResource SkyAppFont}" />
   </Style>
 
   <Style Selector="TextBlock">
     <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+    <Setter Property="FontSize" Value="{StaticResource SkyFontSizeBody}" />
+  </Style>
+
+  <Style Selector="Border.sky-page-surface">
+    <Setter Property="Background" Value="{StaticResource SkyBrushContent}" />
+    <Setter Property="CornerRadius" Value="{StaticResource SkyCornerContent}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <Style Selector="Border.sky-page-surface ScrollBar">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Width" Value="0" />
+    <Setter Property="Height" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
   </Style>
 
   <Style Selector="Border.sky-settings-section">

@@ -1,0 +1,193 @@
+<!-- 模块：SkyMusic.App 专业半 DAW 工作区 -->
+<UserControl x:Class="SkyMusic.App.Views.ProfessionalDawView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels"
+             Focusable="True"
+             KeyDown="Workspace_OnKeyDown">
+  <Grid Background="#0F151B" RowDefinitions="48,*,28" ClipToBounds="True">
+    <Border Background="#182129" BorderBrush="#34424D" BorderThickness="0,0,0,1">
+      <Grid Margin="10,0" ColumnDefinitions="Auto,20,Auto,*,Auto" ColumnSpacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+          <ToggleButton Classes="daw-tool" Content="&#xE72E;" ToolTip.Tip="选择工具 (V)"
+                        IsChecked="{Binding IsSelectTool}" />
+          <ToggleButton Classes="daw-tool" Content="&#xE70F;" ToolTip.Tip="铅笔工具 (P)"
+                        IsChecked="{Binding IsDrawTool}" />
+          <ToggleButton Classes="daw-tool" Content="&#xE74D;" ToolTip.Tip="擦除工具 (E)"
+                        IsChecked="{Binding IsEraseTool}" />
+          <Border Width="1" Height="24" Margin="5,0" Background="#42505A" />
+          <Button Classes="daw-tool" Content="&#xE7A7;" Command="{Binding UndoCommand}" ToolTip.Tip="撤销 (Ctrl+Z)" />
+          <Button Classes="daw-tool" Content="&#xE7A6;" Command="{Binding RedoCommand}" ToolTip.Tip="重做 (Ctrl+Y)" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <Button Classes="daw-tool" Content="&#xE892;" Command="{Binding RewindCommand}" ToolTip.Tip="回到开头" />
+          <Button Classes="daw-play" Content="{Binding PlayPauseGlyph}" Command="{Binding PlayPauseCommand}" ToolTip.Tip="播放/暂停 (Space)" />
+          <Button Classes="daw-tool" Content="&#xE71A;" Command="{Binding StopCommand}" ToolTip.Tip="停止" />
+          <Border Classes="daw-display" Margin="8,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{Binding PositionText}" Classes="daw-display-text" />
+              <TextBlock Text="{Binding TempoText}" Classes="daw-display-text" />
+              <TextBlock Text="{Binding TimeSignatureText}" Classes="daw-display-text" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="量化" Classes="daw-muted" VerticalAlignment="Center" />
+          <ComboBox Width="78" ItemsSource="{Binding QuantizeOptions}" SelectedItem="{Binding Quantize}" />
+          <Button Classes="daw-command" Content="应用" Command="{Binding QuantizeCommand}" />
+          <TextBlock Text="缩放" Classes="daw-muted" VerticalAlignment="Center" Margin="8,0,0,0" />
+          <Slider Width="112" Minimum="0.5" Maximum="3" Value="{Binding HorizontalZoom}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="224,*,246" MinHeight="0">
+      <Border Background="#151D24" BorderBrush="#34424D" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="40,*,42" MinHeight="0">
+          <Grid Margin="10,0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="3">
+            <TextBlock Text="轨道" Classes="daw-heading" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="daw-tool" Content="&#xE710;"
+                    Command="{Binding AddTrackCommand}" ToolTip.Tip="添加轨道" />
+            <Button Grid.Column="2" Classes="daw-tool" Content="&#xE8B0;"
+                    Command="{Binding DuplicateTrackCommand}" ToolTip.Tip="复制轨道 (Ctrl+D)" />
+            <Button Grid.Column="3" Classes="daw-tool danger" Content="&#xE74D;"
+                    Command="{Binding RemoveTrackCommand}" ToolTip.Tip="删除轨道" />
+          </Grid>
+          <ListBox Grid.Row="1" Classes="daw-track-list" ItemsSource="{Binding Tracks}"
+                   SelectedItem="{Binding SelectedTrack}">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:ProfessionalTrackViewModel">
+                <Grid Height="48" ColumnDefinitions="4,30,*,Auto" ColumnSpacing="7">
+                  <Border Background="{Binding Color}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Number}" Classes="daw-muted"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Classes="daw-track-name" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Classes="daw-muted" Margin="0,2,0,0" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" Margin="0,0,5,0">
+                    <ToggleButton Classes="daw-mix" Content="M" IsChecked="{Binding IsMuted, Mode=OneWay}"
+                                  Command="{Binding $parent[UserControl].DataContext.ToggleMuteCommand}"
+                                  CommandParameter="{Binding Id}" />
+                    <ToggleButton Classes="daw-mix" Content="S" IsChecked="{Binding IsSolo, Mode=OneWay}"
+                                  Command="{Binding $parent[UserControl].DataContext.ToggleSoloCommand}"
+                                  CommandParameter="{Binding Id}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Border Grid.Row="2" BorderBrush="#34424D" BorderThickness="0,1,0,0" Padding="10,0">
+            <TextBlock Text="{Binding ProjectSummary}" Classes="daw-muted" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="2*,5,3*" MinWidth="0" MinHeight="0">
+        <Grid MinHeight="150" ClipToBounds="True">
+          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <controls:ArrangementViewport x:Name="Arrangement"
+                                          Width="{Binding TimelineWidth}"
+                                          MinHeight="230"
+                                          Tracks="{Binding ProjectTracks}"
+                                          SelectedTrackId="{Binding SelectedTrackId}"
+                                          Ppq="{Binding Ppq}"
+                                          PixelsPerQuarter="{Binding PixelsPerQuarter}"
+                                          PlayheadTick="{Binding PlayheadTick}"
+                                          TrackSelected="Arrangement_OnTrackSelected" />
+          </ScrollViewer>
+          <Border Background="#D9151D24" HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Margin="8" Padding="8,4" CornerRadius="3">
+            <TextBlock Text="编排" Classes="daw-muted" />
+          </Border>
+        </Grid>
+
+        <GridSplitter Grid.Row="1" Background="#3B4A55" ResizeDirection="Rows" />
+
+        <Grid Grid.Row="2" MinHeight="220" ClipToBounds="True">
+          <ScrollViewer x:Name="PianoScroll"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto"
+                        Loaded="PianoScroll_OnLoaded">
+            <controls:PianoRollViewport x:Name="PianoRoll"
+                                        Width="{Binding TimelineWidth}"
+                                        Height="{Binding PianoRollHeight}"
+                                        Notes="{Binding Notes}"
+                                        SelectedNoteId="{Binding SelectedNoteId}"
+                                        Ppq="{Binding Ppq}"
+                                        GridTicks="{Binding QuantizeTicks}"
+                                        PixelsPerQuarter="{Binding PixelsPerQuarter}"
+                                        PlayheadTick="{Binding PlayheadTick}"
+                                        Tool="{Binding Tool}"
+                                        NoteColor="{Binding SelectedTrack.Color, FallbackValue=#43A6C6}"
+                                        EditRequested="PianoRoll_OnEditRequested" />
+          </ScrollViewer>
+          <Border Background="#D9151D24" HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Margin="82,8,0,0" Padding="8,4" CornerRadius="3">
+            <TextBlock Text="钢琴卷帘" Classes="daw-muted" />
+          </Border>
+        </Grid>
+      </Grid>
+
+      <Border Grid.Column="2" Background="#151D24" BorderBrush="#34424D" BorderThickness="1,0,0,0">
+        <ScrollViewer>
+          <StackPanel Margin="14" Spacing="10">
+            <TextBlock Text="检查器" Classes="daw-heading" />
+            <Border Height="1" Background="#34424D" Margin="0,2,0,4" />
+            <TextBlock Text="轨道" Classes="daw-section-label" />
+            <TextBlock Text="名称" Classes="daw-muted" />
+            <TextBox Text="{Binding SelectedTrackName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+            <Grid ColumnDefinitions="*,42">
+              <TextBlock Text="音量" Classes="daw-muted" />
+              <TextBlock Grid.Column="1" Text="{Binding SelectedTrackGain, StringFormat={}{0:0.00}}" Classes="daw-value" />
+            </Grid>
+            <Slider Minimum="0" Maximum="2" Value="{Binding SelectedTrackGain}" />
+            <Grid ColumnDefinitions="*,42">
+              <TextBlock Text="声像" Classes="daw-muted" />
+              <TextBlock Grid.Column="1" Text="{Binding SelectedTrackPan, StringFormat={}{0:0.00}}" Classes="daw-value" />
+            </Grid>
+            <Slider Minimum="-1" Maximum="1" Value="{Binding SelectedTrackPan}" />
+
+            <Border Height="1" Background="#34424D" Margin="0,8,0,4" />
+            <TextBlock Text="音符" Classes="daw-section-label" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="力度" Classes="daw-muted" VerticalAlignment="Center" />
+              <NumericUpDown Grid.Column="1" Width="82" Minimum="1" Maximum="127"
+                             Value="{Binding SelectedVelocity}" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Button Classes="daw-command" Content="升半音" Command="{Binding TransposeUpCommand}" />
+              <Button Classes="daw-command" Content="降半音" Command="{Binding TransposeDownCommand}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Button Classes="daw-command" Content="复制" Command="{Binding DuplicateNoteCommand}" />
+              <Button Classes="daw-command danger" Content="删除" Command="{Binding DeleteNoteCommand}" />
+            </StackPanel>
+
+            <Border Height="1" Background="#34424D" Margin="0,8,0,4" />
+            <TextBlock Text="工程" Classes="daw-section-label" />
+            <Grid ColumnDefinitions="*,92">
+              <TextBlock Text="速度" Classes="daw-muted" VerticalAlignment="Center" />
+              <NumericUpDown Grid.Column="1" Minimum="20" Maximum="400" Increment="1" Value="{Binding Bpm}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="分辨率" Classes="daw-muted" />
+              <TextBlock Grid.Column="1" Text="{Binding Ppq, StringFormat={}{0} PPQ}" Classes="daw-value" />
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2" Background="#182129" BorderBrush="#34424D" BorderThickness="0,1,0,0">
+      <Grid Margin="10,0" ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding StatusText}" Classes="daw-muted" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding SelectedTrack.Detail, FallbackValue=未选择轨道}"
+                   Classes="daw-muted" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

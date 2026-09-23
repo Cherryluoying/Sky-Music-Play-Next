@@ -10,7 +10,7 @@
       <StackPanel Margin="28,20,28,40" Spacing="18" MaxWidth="900" HorizontalAlignment="Stretch">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel Spacing="4">
-            <TextBlock Text="SkyMusicPlay 设置" Classes="sky-section-title" />
+            <TextBlock Text="猫橘咪音乐设置" Classes="sky-section-title" />
             <TextBlock Text="管理游戏适配、外部工具、音频插件和运行环境" Classes="sky-secondary" />
           </StackPanel>
           <Button Grid.Column="1" Theme="{StaticResource SkyPrimaryCommandButtonTheme}"

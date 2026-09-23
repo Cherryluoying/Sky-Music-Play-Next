@@ -5,7 +5,9 @@
              xmlns:controls="using:SkyMusic.App.Controls">
   <UserControl.Styles>
     <Style Selector="controls|SkyProgressBar.mini-progress /template/ Thumb">
-      <Setter Property="Opacity" Value="0" />
+      <Setter Property="Opacity" Value="0.42" />
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
     </Style>
     <Style Selector="controls|SkyProgressBar.mini-progress.show-thumb /template/ Thumb">
       <Setter Property="Opacity" Value="1" />
@@ -16,58 +18,207 @@
     <Style Selector="Button.desktop-lyrics.active">
       <Setter Property="Foreground" Value="{StaticResource SkyBrushAccent}" />
     </Style>
+    <Style Selector="Button.player-secondary">
+      <Setter Property="Opacity" Value="0.72" />
+    </Style>
+    <Style Selector="Button.player-secondary:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.mini-shell">
+      <Setter Property="Background" Value="#FCFDFE" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="BoxShadow" Value="{StaticResource SkyElevationPlayer}" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open">
+      <Setter Property="Background" Value="#7807111D" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open TextBlock.player-title">
+      <Setter Property="Foreground" Value="#F4F8FC" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open TextBlock.player-artist">
+      <Setter Property="Foreground" Value="#AFC2D6" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.player-secondary">
+      <Setter Property="Foreground" Value="#D8E5F2" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.player-secondary:pointerover,
+                     Border.mini-shell.player-open Button.player-secondary:pressed">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.player-secondary:pointerover /template/ Border#Root">
+      <Setter Property="Background" Value="#24FFFFFF" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.player-secondary:pressed /template/ Border#Root">
+      <Setter Property="Background" Value="#38FFFFFF" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.desktop-lyrics.active /template/ Border#Root">
+      <Setter Property="Background" Value="#2AFFFFFF" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open Button.desktop-lyrics.active">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.mini-shell.player-open TextBlock.player-volume">
+      <Setter Property="Foreground" Value="#D8E5F2" />
+    </Style>
+    <Style Selector="Border.album-cover">
+      <Setter Property="BorderBrush" Value="#160B1E33" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.album-cover.playing">
+      <Setter Property="BorderBrush" Value="#80FFCB70" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BoxShadow" Value="0 3 12 0 #38FFCB70" />
+    </Style>
   </UserControl.Styles>
 
-  <Border Background="{StaticResource SkyBrushSurface}"
-          BoxShadow="{StaticResource SkyElevationPlayer}">
-    <Grid RowDefinitions="14,*">
+  <Border x:Name="PlayerSurface" Classes="mini-shell"
+          Classes.player-open="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+          PointerPressed="PlayerSurface_OnPointerPressed">
+    <Grid RowDefinitions="10,*">
       <controls:SkyProgressBar Grid.Row="0" Classes="mini-progress"
                                Classes.show-thumb="{Binding IsPointerOver, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
                                Theme="{StaticResource SkyMiniProgressRailTheme}"
                                Minimum="0" Maximum="{Binding DurationSeconds}"
                                Value="{Binding PositionSeconds, Mode=TwoWay}"
-                               HorizontalAlignment="Stretch" />
+                               Margin="0,-1,0,0" HorizontalAlignment="Stretch" />
 
-      <Grid Grid.Row="1" ColumnDefinitions="280,*,280" Margin="18,0">
-        <Button Theme="{StaticResource SkySongInfoButtonTheme}"
-                Command="{Binding OpenPlayerCommand}" ToolTip.Tip="打开播放页">
-          <Grid ColumnDefinitions="52,*" VerticalAlignment="Center">
-            <Border Width="48" Height="48" CornerRadius="{StaticResource SkyCornerMedium}"
-                    Background="{StaticResource SkyBrushPlaceholder}" ClipToBounds="True">
-              <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="3">
-              <TextBlock Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
-                         Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{Binding CurrentItem.Artist, FallbackValue=SkyMusicPlay}"
-                         Classes="sky-caption" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-          </Grid>
-        </Button>
+      <Grid Grid.Row="1" ColumnDefinitions="286,*,296" Margin="20,0">
+        <Grid ColumnDefinitions="58,*" VerticalAlignment="Center" ToolTip.Tip="打开沉浸歌词页">
+          <Border Width="52" Height="52" CornerRadius="10"
+                  Classes="album-cover" Classes.playing="{Binding IsPlaying}"
+                  Background="{StaticResource SkyBrushPlaceholder}" ClipToBounds="True">
+            <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center" Spacing="4">
+            <TextBlock Classes="player-title" Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
+                       FontSize="13" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="player-artist" Text="{Binding CurrentItem.Artist, FallbackValue=猫橘咪音乐}"
+                       FontSize="11"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding PlaybackError}" Foreground="#D94B57" FontSize="10"
+                       IsVisible="{Binding PlaybackError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
-                    VerticalAlignment="Center" Spacing="9">
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding PreviousCommand}"
+                    VerticalAlignment="Center" Spacing="12">
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Command="{Binding PreviousCommand}"
                   Content="&#xE892;" ToolTip.Tip="上一首" />
-          <controls:SkyPlayButton Theme="{StaticResource SkyPlayButtonTheme}"
-                                  Command="{Binding TogglePlayCommand}"
-                                  Content="{Binding PlayGlyph}" ToolTip.Tip="播放或暂停" />
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding NextCommand}"
+          <Border Width="48" Height="48" CornerRadius="24" BoxShadow="0 4 14 0 #38FFCB70">
+            <controls:SkyPlayButton Theme="{StaticResource SkyPlayButtonTheme}"
+                                    Width="48" Height="48" CornerRadius="24"
+                                    Command="{Binding TogglePlayCommand}"
+                                    Content="{Binding PlayGlyph}" ToolTip.Tip="播放或暂停" />
+          </Border>
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Command="{Binding NextCommand}"
                   Content="&#xE893;" ToolTip.Tip="下一首" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Command="{Binding ToggleQueuePopupCommand}"
+                  Content="&#xE710;" ToolTip.Tip="播放列表">
+            <Button.Flyout>
+              <Flyout Placement="Top">
+                <Border Background="{StaticResource SkyBrushSurface}" CornerRadius="10" Padding="12"
+                        Width="330" MaxHeight="360" BoxShadow="{StaticResource SkyElevationLow}">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="播放列表" Classes="sky-section-title" />
+                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                      <ItemsControl ItemsSource="{Binding Queue}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Button Theme="{StaticResource SkySongInfoButtonTheme}" Command="{Binding PlayCommand}"
+                                    Padding="8,6" HorizontalContentAlignment="Stretch">
+                              <Grid ColumnDefinitions="36,*,Auto">
+                                <Border Width="30" Height="30" CornerRadius="6" ClipToBounds="True"
+                                        Background="{StaticResource SkyBrushPlaceholder}">
+                                  <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="8,0" Spacing="2">
+                                  <TextBlock Text="{Binding Title}" Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding Artist}" Classes="sky-caption" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{Binding DurationText}" Classes="sky-caption" VerticalAlignment="Center" />
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </StackPanel>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"
-                    VerticalAlignment="Center" Spacing="5">
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="desktop-lyrics"
+                    VerticalAlignment="Center" Spacing="4">
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="desktop-lyrics player-secondary"
                   Classes.active="{Binding IsDesktopLyricsVisible}"
                   Command="{Binding ToggleDesktopLyricsCommand}"
                   Content="词" FontFamily="Microsoft YaHei UI" FontSize="13" ToolTip.Tip="桌面歌词" />
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE8EE;"
-                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="播放模式待接入" />
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE767;"
-                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="音量控制待接入" />
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE712;"
-                  IsHitTestVisible="False" Opacity="0.5" ToolTip.Tip="更多功能待接入" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Content="&#xE8EE;" IsHitTestVisible="False"
+                  ToolTip.Tip="列表循环（当前输出暂不支持切换）" />
+          <Grid ColumnDefinitions="Auto,54" Margin="2,0" VerticalAlignment="Center"
+                IsHitTestVisible="False" Opacity="0.56" ToolTip.Tip="音量由当前音频输出控制">
+            <TextBlock Classes="player-volume" Text="&#xE767;" FontFamily="Segoe Fluent Icons" FontSize="15"
+                       Foreground="{StaticResource SkyBrushTextSecondary}"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+            <Grid Grid.Column="1" Height="12" Margin="8,0,0,0">
+              <Border Height="3" CornerRadius="2" Background="{StaticResource SkyBrushBorder}"
+                      VerticalAlignment="Center" />
+              <Border Width="34" Height="3" CornerRadius="2" Background="{StaticResource SkyBrushAccent}"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" />
+            </Grid>
+          </Grid>
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Content="&#xE712;" IsHitTestVisible="False"
+                  ToolTip.Tip="更多功能待接入" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  Content="&#xE713;" Command="{Binding ToggleScoreSettingsCommand}" ToolTip.Tip="演奏设置">
+            <Button.Flyout>
+              <Flyout Placement="Top">
+                <Border Background="{StaticResource SkyBrushSurface}" CornerRadius="10" Padding="14"
+                        Width="310" BoxShadow="{StaticResource SkyElevationLow}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="演奏设置" Classes="sky-section-title" />
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                      <TextBlock Text="音符间隔" Classes="sky-body" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding IntervalAdjustmentText}" Classes="sky-secondary" VerticalAlignment="Center" />
+                      <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Content="−"
+                              Command="{Binding AdjustIntervalCommand}" CommandParameter="-10" />
+                      <Button Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Content="+"
+                              Command="{Binding AdjustIntervalCommand}" CommandParameter="10" />
+                      <TextBlock Grid.Row="1" Text="释放延迟" Classes="sky-body" VerticalAlignment="Center" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding KeyReleaseDelayText}" Classes="sky-secondary" VerticalAlignment="Center" />
+                      <Button Grid.Row="1" Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Content="−"
+                              Command="{Binding AdjustReleaseDelayCommand}" CommandParameter="-10" />
+                      <Button Grid.Row="1" Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Content="+"
+                              Command="{Binding AdjustReleaseDelayCommand}" CommandParameter="10" />
+                      <TextBlock Grid.Row="2" Text="目标窗口" Classes="sky-body" VerticalAlignment="Center" />
+                      <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding PlaybackWindows}"
+                                SelectedItem="{Binding SelectedPlaybackWindow}" PlaceholderText="自动选择窗口">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <Button Grid.Row="2" Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}"
+                              Content="&#xE72C;" FontFamily="Segoe Fluent Icons"
+                              Command="{Binding RefreshPlaybackWindowsCommand}" ToolTip.Tip="刷新目标窗口" />
+                    </Grid>
+                    <TextBlock Text="调整只作用于 TXT/JSON 乐谱演奏" Classes="sky-caption" />
+                  </StackPanel>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
       </Grid>
     </Grid>

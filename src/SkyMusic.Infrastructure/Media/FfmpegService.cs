@@ -32,7 +32,7 @@ public sealed class FfmpegService(
         return null;
     }
 
-    // 依次探测配置路径、环境变量和系统 PATH
+    // 依次探测配置路径、环境变量、应用内置工具链和系统 PATH。
     public async ValueTask<ExternalToolStatus> ProbeAsync(
         string? configuredPath = null,
         CancellationToken cancellationToken = default)
@@ -129,6 +129,17 @@ public sealed class FfmpegService(
         }
 
         var executableName = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
+        var directoryInfo = new DirectoryInfo(Path.GetFullPath(startDirectory));
+        for (var depth = 0; depth < 10 && directoryInfo is not null; depth++, directoryInfo = directoryInfo.Parent)
+        {
+            yield return new Candidate(
+                Path.Combine(directoryInfo.FullName, "ffmpeg", "bin", executableName),
+                "应用内置 FFmpeg");
+            yield return new Candidate(
+                Path.Combine(directoryInfo.FullName, "PianoTrans-v1.0", "ffmpeg", executableName),
+                "PianoTrans 扩展");
+        }
+
         foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
                      .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
@@ -138,14 +149,6 @@ public sealed class FfmpegService(
         if (!string.IsNullOrWhiteSpace(pianoTransDirectory))
         {
             yield return new Candidate(Path.Combine(pianoTransDirectory, "ffmpeg", executableName), "PianoTrans 扩展");
-        }
-
-        var directoryInfo = new DirectoryInfo(Path.GetFullPath(startDirectory));
-        for (var depth = 0; depth < 10 && directoryInfo is not null; depth++, directoryInfo = directoryInfo.Parent)
-        {
-            yield return new Candidate(
-                Path.Combine(directoryInfo.FullName, "PianoTrans-v1.0", "ffmpeg", executableName),
-                "PianoTrans 扩展");
         }
     }
 

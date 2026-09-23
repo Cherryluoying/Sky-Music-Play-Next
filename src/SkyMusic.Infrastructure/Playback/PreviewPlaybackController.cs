@@ -32,8 +32,12 @@ public sealed class PreviewPlaybackController : IPlaybackController
         }
     }
 
-    public void Load(MusicTrack track, bool autoplay = false)
+    public ValueTask LoadAsync(
+        MusicTrack track,
+        bool autoplay = false,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
             _clock.Reset();
@@ -50,15 +54,17 @@ public sealed class PreviewPlaybackController : IPlaybackController
         }
 
         Publish();
+        return ValueTask.CompletedTask;
     }
 
-    public void Play()
+    public ValueTask PlayAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
             if (_snapshot.Track is null || _snapshot.State == PlaybackState.Playing)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
             if (_snapshot.Position >= _snapshot.Duration)
@@ -71,15 +77,17 @@ public sealed class PreviewPlaybackController : IPlaybackController
         }
 
         Publish();
+        return ValueTask.CompletedTask;
     }
 
-    public void Pause()
+    public ValueTask PauseAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
             if (_snapshot.State != PlaybackState.Playing)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
             _basePosition = CurrentPosition();
@@ -88,10 +96,12 @@ public sealed class PreviewPlaybackController : IPlaybackController
         }
 
         Publish();
+        return ValueTask.CompletedTask;
     }
 
-    public void Seek(TimeSpan position)
+    public ValueTask SeekAsync(TimeSpan position, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
             var duration = _snapshot.Duration;
@@ -107,6 +117,7 @@ public sealed class PreviewPlaybackController : IPlaybackController
         }
 
         Publish();
+        return ValueTask.CompletedTask;
     }
 
     private void PublishTick()

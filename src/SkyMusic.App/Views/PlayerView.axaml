@@ -3,60 +3,110 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:SkyMusic.App.Controls">
+  <UserControl.Styles>
+    <!-- 沉浸背景中的操作图标在普通、悬停和按下状态都保持足够对比度。 -->
+    <Style Selector="Button.immersive-icon">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.immersive-icon:pointerover /template/ Border#Root">
+      <Setter Property="Background" Value="#24FFFFFF" />
+    </Style>
+    <Style Selector="Button.immersive-icon:pressed /template/ Border#Root">
+      <Setter Property="Background" Value="#38FFFFFF" />
+    </Style>
+    <Style Selector="Button.immersive-icon:pointerover, Button.immersive-icon:pressed">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </UserControl.Styles>
   <Grid ClipToBounds="True">
-    <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" Opacity="0.09" />
-    <Border Background="{StaticResource SkyBrushBackground}" Opacity="0.94" />
+    <Border Background="#0B1727" />
+    <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" Opacity="0.72"
+           RenderTransformOrigin="50%,50%">
+      <Image.Effect>
+        <BlurEffect Radius="54" />
+      </Image.Effect>
+      <Image.RenderTransform>
+        <ScaleTransform ScaleX="1.12" ScaleY="1.12" />
+      </Image.RenderTransform>
+    </Image>
+    <Border Background="#A80A1626" />
+    <Border>
+      <Border.Background>
+        <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+          <GradientStop Color="#24071220" Offset="0" />
+          <GradientStop Color="#72071220" Offset="0.58" />
+          <GradientStop Color="#C2071220" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
 
-    <Grid RowDefinitions="56,*">
-      <Grid Margin="24,0,0,0" ColumnDefinitions="Auto,*,Auto,Auto">
-        <Grid.RenderTransform>
-          <TranslateTransform Y="5" />
-        </Grid.RenderTransform>
-        <Button Theme="{StaticResource SkyIconButtonTheme}"
+    <!-- 首尾预留自绘标题栏和 MiniPlayer，高斯背景会连续铺到窗口边缘。 -->
+    <Grid RowDefinitions="44,58,*,88">
+      <Grid Grid.Row="1" Margin="26,0" ColumnDefinitions="Auto,*,Auto,Auto">
+        <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon"
                 Command="{Binding DataContext.ClosePlayerCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                Content="&#xE72B;" ToolTip.Tip="返回" VerticalAlignment="Center" />
+                Content="&#xE72B;" ToolTip.Tip="返回" Foreground="White"
+                VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Border Width="7" Height="7" CornerRadius="{StaticResource SkyCornerSmall}"
-                  Background="{StaticResource SkyBrushAccent}" />
-          <TextBlock Text="正在播放" Classes="sky-secondary" FontWeight="SemiBold" />
+          <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource SkyBrushAccent}" />
+          <TextBlock Text="{Binding PlayerPageTitle}" Foreground="#D9FFFFFF" FontSize="12"
+                     FontWeight="SemiBold" />
         </StackPanel>
-        <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE712;"
-                IsHitTestVisible="False" Opacity="0.45"
-                ToolTip.Tip="播放页设置待接入" VerticalAlignment="Center" />
-        <Border Grid.Column="3" MinWidth="144"
-                Width="{Binding WindowDecorationMargin.Right, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
+        <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon"
+                IsVisible="{Binding ShowsLyrics}" Click="ImportLyrics_OnClick"
+                Content="&#xE8E5;" Foreground="White" ToolTip.Tip="导入本地歌词" />
+        <Button Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon" Content="&#xE712;"
+                Foreground="White" IsHitTestVisible="False" Opacity="0.62"
+                ToolTip.Tip="更多功能待接入" VerticalAlignment="Center" />
       </Grid>
 
-      <Grid Grid.Row="1" ColumnDefinitions="44*,56*" Margin="48,12,48,28">
-        <Grid Grid.Column="0" RowDefinitions="*,Auto" Margin="0,0,46,0">
-          <Border Width="320" Height="320" MaxWidth="320" MaxHeight="320"
-                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                  CornerRadius="{StaticResource SkyCornerPlayer}"
-                  Background="{StaticResource SkyBrushPlaceholder}"
-                  BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1"
-                  BoxShadow="{StaticResource SkyElevationLow}" ClipToBounds="True">
-            <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
-          </Border>
-          <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="4" Margin="0,16,0,0">
-            <TextBlock Text="{Binding CurrentItem.Album}" Classes="sky-secondary" FontWeight="SemiBold"
-                       HorizontalAlignment="Center" />
-            <TextBlock Text="SkyMusicPlay 乐谱来源" Classes="sky-caption"
-                       HorizontalAlignment="Center" />
-          </StackPanel>
-        </Grid>
-
-        <Grid Grid.Column="1" RowDefinitions="Auto,*" MinWidth="360">
-          <StackPanel Spacing="7" Margin="0,12,0,22">
-            <TextBlock Text="{Binding CurrentItem.Title}" FontSize="30" FontWeight="SemiBold"
-                       TextTrimming="CharacterEllipsis" />
-            <StackPanel Orientation="Horizontal" Spacing="14">
-              <TextBlock Text="{Binding CurrentItem.Artist}" Classes="sky-secondary" FontSize="13" />
-              <TextBlock Text="{Binding CurrentItem.Album}" Classes="sky-caption" FontSize="13" />
+      <Grid Grid.Row="2" Margin="64,18,64,28" MaxWidth="1320" HorizontalAlignment="Center">
+        <Grid IsVisible="{Binding ShowsLyrics}" ColumnDefinitions="0.9*,1.15*" ColumnSpacing="62">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18">
+            <Border Width="350" Height="350" CornerRadius="18"
+                    Background="#24FFFFFF" BorderBrush="#32FFFFFF" BorderThickness="1"
+                    BoxShadow="0 18 46 0 #70000000" ClipToBounds="True">
+              <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
+            </Border>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="9">
+              <TextBlock Text="{Binding PositionText}" Foreground="#B8FFFFFF" FontSize="11" />
+              <Border Width="42" Height="1" Background="#54FFFFFF" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DurationText}" Foreground="#78FFFFFF" FontSize="11" />
             </StackPanel>
           </StackPanel>
-          <controls:LyricsView Grid.Row="1" />
+
+          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" VerticalAlignment="Stretch">
+            <TextBlock Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
+                       Foreground="White" FontSize="34" FontWeight="Bold"
+                       TextWrapping="Wrap" MaxLines="2" />
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="9" Margin="0,8,0,22">
+              <TextBlock Text="{Binding CurrentItem.Artist, FallbackValue=猫橘咪音乐}"
+                         Foreground="#D4FFFFFF" FontSize="14" FontWeight="SemiBold" />
+              <TextBlock Text="·" Foreground="#68FFFFFF" FontSize="14" />
+              <TextBlock Text="{Binding CurrentItem.Album, FallbackValue=本地音乐}"
+                         Foreground="#92FFFFFF" FontSize="14" />
+            </StackPanel>
+            <Grid Grid.Row="2">
+              <controls:LyricsView IsVisible="{Binding HasLyrics}" />
+              <StackPanel IsVisible="{Binding HasNoLyrics}" HorizontalAlignment="Left"
+                          VerticalAlignment="Center" Spacing="13" MaxWidth="360">
+                <TextBlock Text="暂无歌词" Foreground="White" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="导入 LRC 或 TXT 后，可按时间轴滚动和跳转。"
+                           Foreground="#A8FFFFFF" FontSize="13" TextWrapping="Wrap" />
+                <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                        Click="ImportLyrics_OnClick" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <TextBlock Text="&#xE8E5;" FontFamily="Segoe Fluent Icons" />
+                    <TextBlock Text="导入本地歌词" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Grid>
         </Grid>
+        <controls:MidiPianoRoll IsVisible="{Binding IsMidi}"
+                                Notes="{Binding MidiNotes}" PositionSeconds="{Binding PositionSeconds}" />
       </Grid>
     </Grid>
   </Grid>

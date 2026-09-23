@@ -10,11 +10,14 @@ public interface IPlaybackController : IDisposable
 
     PlaybackSnapshot Snapshot { get; }
 
-    void Load(MusicTrack track, bool autoplay = false);
+    ValueTask LoadAsync(
+        MusicTrack track,
+        bool autoplay = false,
+        CancellationToken cancellationToken = default);
 
-    void Play();
+    ValueTask PlayAsync(CancellationToken cancellationToken = default);
 
-    void Pause();
+    ValueTask PauseAsync(CancellationToken cancellationToken = default);
 
-    void Seek(TimeSpan position);
+    ValueTask SeekAsync(TimeSpan position, CancellationToken cancellationToken = default);
 }

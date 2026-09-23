@@ -1,5 +1,6 @@
 // 模块：SkyMusic.App 页面视图 WorkbenchWindow.axaml
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using SkyMusic.App.ViewModels;
@@ -11,10 +12,32 @@ public sealed partial class WorkbenchWindow : Window
     public WorkbenchWindow()
     {
         InitializeComponent();
-        Closed += (_, _) => ViewModel?.Dispose();
+        Closed += OnClosed;
     }
 
     private WorkbenchWindowViewModel? ViewModel => DataContext as WorkbenchWindowViewModel;
+
+    private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Handled || e.Source is Button or TextBox or ComboBox or Slider)
+            return;
+        if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
+            BeginMoveDrag(e);
+    }
+
+    private void Minimize_OnClick(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void Maximize_OnClick(object? sender, RoutedEventArgs e)
+        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void Close_OnClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        ViewModel?.Dispose();
+        Owner?.Activate();
+        Owner?.Focus();
+    }
 
     private void NewProject_OnClick(object? sender, RoutedEventArgs e)
         => ViewModel?.NewProjectCommand.Execute(null);
@@ -23,7 +46,7 @@ public sealed partial class WorkbenchWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "打开 SkyMusicPlay 工程",
+            Title = "打开猫橘咪音乐工程",
             AllowMultiple = false,
             FileTypeFilter =
             [
@@ -31,7 +54,7 @@ public sealed partial class WorkbenchWindow : Window
                 {
                     Patterns = ["*.skymusicproj", "*.skysheet.json", "*.genshinsheet.json", "*.json", "*.mid", "*.midi"]
                 },
-                new FilePickerFileType("SkyMusicPlay 工程") { Patterns = ["*.skymusicproj"] },
+                new FilePickerFileType("猫橘咪音乐工程") { Patterns = ["*.skymusicproj"] },
                 new FilePickerFileType("游戏乐谱") { Patterns = ["*.skysheet.json", "*.genshinsheet.json", "*.json"] },
                 new FilePickerFileType("MIDI") { Patterns = ["*.mid", "*.midi"] }
             ]
@@ -47,12 +70,12 @@ public sealed partial class WorkbenchWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "保存 SkyMusicPlay 工程",
+            Title = "保存猫橘咪音乐工程",
             SuggestedFileName = $"{ViewModel?.ProjectTitle ?? "未命名工程"}.skymusicproj",
             DefaultExtension = "skymusicproj",
             FileTypeChoices =
             [
-                new FilePickerFileType("SkyMusicPlay 工程") { Patterns = ["*.skymusicproj"] }
+                new FilePickerFileType("猫橘咪音乐工程") { Patterns = ["*.skymusicproj"] }
             ]
         });
         if (file is null || ViewModel is null)

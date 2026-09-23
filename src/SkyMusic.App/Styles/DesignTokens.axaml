@@ -2,20 +2,27 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <Color x:Key="SkyColorBackground">#F6F8FB</Color>
-    <Color x:Key="SkyColorSurface">#FFFFFF</Color>
-    <Color x:Key="SkyColorSurfaceSecondary">#F0F3F7</Color>
-    <Color x:Key="SkyColorBorder">#DDE3EA</Color>
+    <FontFamily x:Key="SkyAppFont">avares://SkyMusic.App/Assets/fonts/OPPO-Sans.ttf#OPPO Sans 4.0</FontFamily>
+    <Color x:Key="SkyColorBackground">#EEF3F8</Color>
+    <Color x:Key="SkyColorSurface">#FCFDFE</Color>
+    <Color x:Key="SkyColorSurfaceSecondary">#F2F5F9</Color>
+    <Color x:Key="SkyColorContent">#F7F9FC</Color>
+    <Color x:Key="SkyColorShellChrome">#F3F6FA</Color>
+    <Color x:Key="SkyColorSidebar">#F1F5F9</Color>
+    <Color x:Key="SkyColorBorder">#D8E1EB</Color>
     <Color x:Key="SkyColorTextPrimary">#172033</Color>
     <Color x:Key="SkyColorTextSecondary">#657086</Color>
     <Color x:Key="SkyColorTextTertiary">#919BAD</Color>
-    <Color x:Key="SkyColorAccent">#1473E6</Color>
-    <Color x:Key="SkyColorAccentHover">#0F66CD</Color>
-    <Color x:Key="SkyColorAccentPressed">#0B58B5</Color>
+    <Color x:Key="SkyColorAccent">#FFCB70</Color>
+    <Color x:Key="SkyColorAccentHover">#F4B84F</Color>
+    <Color x:Key="SkyColorAccentPressed">#DF9F35</Color>
 
     <SolidColorBrush x:Key="SkyBrushBackground" Color="{StaticResource SkyColorBackground}" />
     <SolidColorBrush x:Key="SkyBrushSurface" Color="{StaticResource SkyColorSurface}" />
     <SolidColorBrush x:Key="SkyBrushSurfaceSecondary" Color="{StaticResource SkyColorSurfaceSecondary}" />
+    <SolidColorBrush x:Key="SkyBrushContent" Color="{StaticResource SkyColorContent}" />
+    <SolidColorBrush x:Key="SkyBrushShellChrome" Color="{StaticResource SkyColorShellChrome}" />
+    <SolidColorBrush x:Key="SkyBrushSidebar" Color="{StaticResource SkyColorSidebar}" />
     <SolidColorBrush x:Key="SkyBrushBorder" Color="{StaticResource SkyColorBorder}" />
     <SolidColorBrush x:Key="SkyBrushTextPrimary" Color="{StaticResource SkyColorTextPrimary}" />
     <SolidColorBrush x:Key="SkyBrushTextSecondary" Color="{StaticResource SkyColorTextSecondary}" />
@@ -23,13 +30,16 @@
     <SolidColorBrush x:Key="SkyBrushAccent" Color="{StaticResource SkyColorAccent}" />
     <SolidColorBrush x:Key="SkyBrushAccentHover" Color="{StaticResource SkyColorAccentHover}" />
     <SolidColorBrush x:Key="SkyBrushAccentPressed" Color="{StaticResource SkyColorAccentPressed}" />
-    <SolidColorBrush x:Key="SkyBrushAccentSoft" Color="#E7F1FD" />
-    <SolidColorBrush x:Key="SkyBrushAccentSoftHover" Color="#DCEBFC" />
+    <SolidColorBrush x:Key="SkyBrushAccentSoft" Color="#FFF4DF" />
+    <SolidColorBrush x:Key="SkyBrushAccentSoftHover" Color="#FFE9C2" />
+    <SolidColorBrush x:Key="SkyBrushNavigationHover" Color="#E9EEF4" />
     <SolidColorBrush x:Key="SkyBrushPlaceholder" Color="#E8EDF3" />
 
-    <CornerRadius x:Key="SkyCornerSmall">4</CornerRadius>
+    <CornerRadius x:Key="SkyCornerSmall">5</CornerRadius>
     <CornerRadius x:Key="SkyCornerMedium">8</CornerRadius>
     <CornerRadius x:Key="SkyCornerLarge">12</CornerRadius>
+    <CornerRadius x:Key="SkyCornerWindow">14</CornerRadius>
+    <CornerRadius x:Key="SkyCornerContent">12</CornerRadius>
     <CornerRadius x:Key="SkyCornerCard">10</CornerRadius>
     <CornerRadius x:Key="SkyCornerBanner">14</CornerRadius>
     <CornerRadius x:Key="SkyCornerPlayer">12</CornerRadius>
@@ -42,6 +52,10 @@
     <x:Double x:Key="SkySpacing24">24</x:Double>
     <x:Double x:Key="SkySpacing32">32</x:Double>
     <x:Double x:Key="SkySpacing40">40</x:Double>
+    <x:Double x:Key="SkyPageHorizontalPadding">28</x:Double>
+    <x:Double x:Key="SkySectionGap">24</x:Double>
+    <x:Double x:Key="SkyCardGap">12</x:Double>
+    <x:Double x:Key="SkyNavigationGap">2</x:Double>
 
     <x:Double x:Key="SkyFontSizePageTitle">21</x:Double>
     <x:Double x:Key="SkyFontSizeSectionTitle">17</x:Double>

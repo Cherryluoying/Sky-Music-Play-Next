@@ -5,13 +5,16 @@
         xmlns:controls="using:SkyMusic.App.Controls"
         xmlns:views="using:SkyMusic.App.Views"
         xmlns:vm="using:SkyMusic.App.ViewModels"
-        Title="SkyMusicPlay"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="56"
-        Width="1180"
-        Height="700"
-        MinWidth="980"
-        MinHeight="620"
+        Title="猫橘咪音乐"
+        Icon="avares://SkyMusic.App/Assets/logo_256x256.ico"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        CanResize="True"
+        Width="1120"
+        Height="840"
+        MinWidth="960"
+        MinHeight="720"
         WindowStartupLocation="CenterScreen">
   <Window.DataTemplates>
     <DataTemplate DataType="vm:DiscoverViewModel">
@@ -48,17 +51,175 @@
       <views:SettingsView />
     </DataTemplate>
   </Window.DataTemplates>
+  <Window.Styles>
+    <Style Selector="Border.shell-titlebar">
+      <Setter Property="Background" Value="{StaticResource SkyBrushShellChrome}" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open TextBlock.brand-title">
+      <Setter Property="Foreground" Value="#EFFFFFFF" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open Button.shell-caption">
+      <Setter Property="Foreground" Value="#C9FFFFFF" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open Button.shell-caption:pointerover">
+      <Setter Property="Background" Value="#24FFFFFF" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open Button.shell-caption:pressed">
+      <Setter Property="Background" Value="#38FFFFFF" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.shell-titlebar.player-open Button.shell-caption.window-close:pointerover">
+      <Setter Property="Background" Value="#C94A55" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.resize-grip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Panel.ZIndex" Value="20" />
+    </Style>
+    <Style Selector="Border.resize-left">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="Cursor" Value="SizeWestEast" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Border.resize-right">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="Cursor" Value="SizeWestEast" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Border.resize-top">
+      <Setter Property="Height" Value="6" />
+      <Setter Property="Cursor" Value="SizeNorthSouth" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.resize-bottom">
+      <Setter Property="Height" Value="6" />
+      <Setter Property="Cursor" Value="SizeNorthSouth" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+    </Style>
+    <Style Selector="Border.resize-top-left, Border.resize-top-right, Border.resize-bottom-left, Border.resize-bottom-right">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+    </Style>
+    <Style Selector="Border.resize-top-left">
+      <Setter Property="Cursor" Value="TopLeftCorner" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.resize-top-right">
+      <Setter Property="Cursor" Value="TopRightCorner" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.resize-bottom-left">
+      <Setter Property="Cursor" Value="BottomLeftCorner" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+    </Style>
+    <Style Selector="Border.resize-bottom-right">
+      <Setter Property="Cursor" Value="BottomRightCorner" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+    </Style>
+  </Window.Styles>
 
-  <Grid Background="{StaticResource SkyBrushBackground}" RowDefinitions="*,88">
-    <Grid Grid.Row="0" IsVisible="{Binding IsStandardShellVisible}" ColumnDefinitions="188,*">
-      <controls:Sidebar />
-      <ContentControl Grid.Column="1" Content="{Binding CurrentPageViewModel}" />
+  <Grid Background="Transparent">
+  <Border Background="{StaticResource SkyBrushBackground}"
+          CornerRadius="{StaticResource SkyCornerWindow}"
+          ClipToBounds="True">
+    <Grid RowDefinitions="44,*,88">
+      <Border Grid.Row="0" Classes="shell-titlebar" ZIndex="10"
+              Classes.player-open="{Binding IsPlayerVisible}"
+              BorderThickness="0"
+              PointerPressed="TitleBar_OnPointerPressed">
+        <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent">
+        <StackPanel Orientation="Horizontal" Spacing="9" Margin="15,0,24,0" VerticalAlignment="Center">
+          <Border Width="25" Height="25" CornerRadius="7" ClipToBounds="True"
+                  Background="{StaticResource SkyBrushPlaceholder}">
+            <Image Source="avares://SkyMusic.App/Assets/logo.jpg" Stretch="UniformToFill" />
+          </Border>
+          <TextBlock Text="猫橘咪音乐" Classes="brand-title" FontSize="12" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+        <Grid Grid.Column="1" Width="320" HorizontalAlignment="Center" VerticalAlignment="Center"
+              IsVisible="{Binding IsStandardShellVisible}">
+          <controls:SkySearchBox x:Name="GlobalSearchBox" Width="320"
+                                 Text="{Binding GlobalSearchText}"
+                                 Watermark="搜索全部歌曲、MIDI 和乐谱" />
+          <Popup IsOpen="{Binding IsGlobalSearchOpen}" Placement="Bottom"
+                 PlacementTarget="{Binding #GlobalSearchBox}" VerticalOffset="6">
+            <Border Width="360" MaxHeight="420" Padding="10" CornerRadius="10"
+                    Background="{StaticResource SkyBrushSurface}" BoxShadow="{StaticResource SkyElevationLow}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="搜索结果" Classes="sky-caption" Margin="6,2" />
+                <ScrollViewer MaxHeight="370" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding GlobalSearchResults}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:TrackItemViewModel">
+                        <Button Theme="{StaticResource SkySongInfoButtonTheme}"
+                                DoubleTapped="GlobalSearchResult_OnDoubleTapped"
+                                ToolTip.Tip="双击播放"
+                                Padding="7" HorizontalContentAlignment="Stretch">
+                          <Grid ColumnDefinitions="40,*,Auto">
+                            <Border Width="36" Height="36" CornerRadius="7" ClipToBounds="True"
+                                    Background="{StaticResource SkyBrushPlaceholder}">
+                              <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="9,0" Spacing="2">
+                              <TextBlock Text="{Binding Title}" Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
+                              <TextBlock Text="{Binding Artist}" Classes="sky-caption" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="{Binding DurationText}" Classes="sky-caption" VerticalAlignment="Center" />
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+          </Popup>
+        </Grid>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" Margin="0,0,4,0"
+                    VerticalAlignment="Center">
+          <Button Classes="shell-caption" Content="&#xE921;" Click="Minimize_OnClick" ToolTip.Tip="最小化" />
+          <Button Classes="shell-caption" Content="&#xE922;" Click="Maximize_OnClick" ToolTip.Tip="最大化/还原" />
+          <Button Classes="shell-caption window-close" Content="&#xE8BB;" Click="Close_OnClick" ToolTip.Tip="关闭" />
+        </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="1" IsVisible="{Binding IsStandardShellVisible}" ColumnDefinitions="204,*"
+            Background="{StaticResource SkyBrushShellChrome}">
+        <controls:Sidebar />
+        <Border Grid.Column="1" Classes="sky-page-surface" CornerRadius="12,0,0,0">
+          <ContentControl Content="{Binding CurrentPageViewModel}" />
+        </Border>
+      </Grid>
+
+      <views:PlayerView Grid.Row="0" Grid.RowSpan="3" ZIndex="5"
+                        IsVisible="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                        DataContext="{Binding Playback}" />
+
+      <controls:SkyMiniPlayer Grid.Row="2" ZIndex="10" DataContext="{Binding Playback}" />
     </Grid>
+  </Border>
 
-    <views:PlayerView Grid.Row="0"
-                      IsVisible="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                      DataContext="{Binding Playback}" />
-
-    <controls:SkyMiniPlayer Grid.Row="1" DataContext="{Binding Playback}" />
+  <!-- 无边框窗口的自绘缩放热区，避免依赖系统标题栏。 -->
+  <Border Classes="resize-grip resize-left" Tag="Left" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-right" Tag="Right" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-top" Tag="Top" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-bottom" Tag="Bottom" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-top-left" Tag="TopLeft" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-top-right" Tag="TopRight" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-bottom-left" Tag="BottomLeft" PointerPressed="Resize_OnPointerPressed" />
+  <Border Classes="resize-grip resize-bottom-right" Tag="BottomRight" PointerPressed="Resize_OnPointerPressed" />
   </Grid>
 </Window>

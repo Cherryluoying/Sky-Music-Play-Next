@@ -11,6 +11,7 @@ namespace SkyMusic.App.ViewModels;
 public sealed class PlaybackViewModel : ObservableObject, IDisposable
 {
     private readonly IPlaybackController _player;
+    private readonly SemaphoreSlim _playbackGate = new(1, 1);
     private readonly ILyricsProvider? _lyricsProvider;
     private TrackItemViewModel? _currentItem;
     private double _positionSeconds;
@@ -20,16 +21,49 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     private int _currentLyricIndex = -1;
     private bool _isDesktopLyricsVisible;
     private CancellationTokenSource? _lyricsRequest;
+    private readonly IMediaLibraryStore? _libraryStore;
+    private readonly IScorePlaybackController? _scoreController;
+    private readonly IMidiVisualizationService? _midiVisualization;
+    private readonly string _localLyricsDirectory;
+    private bool _isQueuePopupOpen;
+    private bool _isScoreSettingsOpen;
+    private bool _isPlaybackLoading;
+    private string? _playbackError;
+    private CancellationTokenSource? _playbackRequest;
+    private CancellationTokenSource? _seekRequest;
 
-    public PlaybackViewModel(IPlaybackController player, ILyricsProvider? lyricsProvider = null)
+    public PlaybackViewModel(
+        IPlaybackController player,
+        ILyricsProvider? lyricsProvider = null,
+        IMediaLibraryStore? libraryStore = null,
+        IScorePlaybackController? scoreController = null,
+        IMidiVisualizationService? midiVisualization = null,
+        string? localLyricsDirectory = null)
     {
         _player = player;
         _lyricsProvider = lyricsProvider;
+        _libraryStore = libraryStore;
+        _scoreController = scoreController;
+        _midiVisualization = midiVisualization;
+        _localLyricsDirectory = Path.GetFullPath(localLyricsDirectory ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SkyMusicPlay",
+            "Library",
+            "lyrics"));
         _player.SnapshotChanged += OnSnapshotChanged;
 
-        TogglePlayCommand = new RelayCommand(_ => TogglePlay());
-        PreviousCommand = new RelayCommand(_ => MoveTrack(-1));
-        NextCommand = new RelayCommand(_ => MoveTrack(1));
+        TogglePlayCommand = new AsyncRelayCommand(
+            _ => TogglePlayAsync(),
+            _ => !IsPlaybackLoading,
+            SetPlaybackError);
+        PreviousCommand = new AsyncRelayCommand(
+            _ => MoveTrackAsync(-1),
+            _ => !IsPlaybackLoading,
+            SetPlaybackError);
+        NextCommand = new AsyncRelayCommand(
+            _ => MoveTrackAsync(1),
+            _ => !IsPlaybackLoading,
+            SetPlaybackError);
         OpenPlayerCommand = new RelayCommand(_ =>
         {
             if (HasTrack)
@@ -39,11 +73,35 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         });
         ToggleDesktopLyricsCommand = new RelayCommand(_ =>
             SetDesktopLyricsVisible(!IsDesktopLyricsVisible));
+        ToggleFavoriteCommand = new AsyncRelayCommand(
+            parameter => ToggleFavoriteAsync(parameter as TrackItemViewModel),
+            parameter => parameter is TrackItemViewModel,
+            _ => { });
+        AdjustIntervalCommand = new AsyncRelayCommand(
+            parameter => AdjustTimingAsync(int.TryParse(parameter?.ToString(), out var value) ? value : 0, 0),
+            _ => _scoreController is not null,
+            _ => { });
+        AdjustReleaseDelayCommand = new AsyncRelayCommand(
+            parameter => AdjustTimingAsync(0, int.TryParse(parameter?.ToString(), out var value) ? value : 0),
+            _ => _scoreController is not null,
+            _ => { });
+        RefreshPlaybackWindowsCommand = new AsyncRelayCommand(
+            _ => _scoreController?.RefreshWindowsAsync().AsTask() ?? Task.CompletedTask,
+            _ => _scoreController is not null,
+            _ => { });
+        ToggleQueuePopupCommand = new RelayCommand(_ => IsQueuePopupOpen = !IsQueuePopupOpen);
+        ToggleScoreSettingsCommand = new RelayCommand(_ => IsScoreSettingsOpen = !IsScoreSettingsOpen);
+        if (_scoreController is not null)
+        {
+            _scoreController.Changed += OnScoreControllerChanged;
+        }
     }
 
     public event EventHandler? OpenPlayerRequested;
 
     public event Action<bool>? DesktopLyricsVisibilityChanged;
+
+    public event EventHandler? MediaLibraryChanged;
 
     public ObservableCollection<TrackItemViewModel> Queue { get; } = [];
 
@@ -51,15 +109,111 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<LyricLineViewModel> Lyrics { get; } = [];
 
-    public RelayCommand TogglePlayCommand { get; }
+    public ObservableCollection<MidiVisualNote> MidiNotes { get; } = [];
 
-    public RelayCommand PreviousCommand { get; }
+    public AsyncRelayCommand TogglePlayCommand { get; }
 
-    public RelayCommand NextCommand { get; }
+    public AsyncRelayCommand PreviousCommand { get; }
+
+    public AsyncRelayCommand NextCommand { get; }
 
     public RelayCommand OpenPlayerCommand { get; }
 
     public RelayCommand ToggleDesktopLyricsCommand { get; }
+
+    public AsyncRelayCommand ToggleFavoriteCommand { get; }
+
+    public AsyncRelayCommand AdjustIntervalCommand { get; }
+
+    public AsyncRelayCommand AdjustReleaseDelayCommand { get; }
+
+    public AsyncRelayCommand RefreshPlaybackWindowsCommand { get; }
+
+    public RelayCommand ToggleQueuePopupCommand { get; }
+
+    public RelayCommand ToggleScoreSettingsCommand { get; }
+
+    public bool IsMidi => CurrentItem?.Track.Kind == MediaKind.Midi;
+
+    public bool ShowsLyrics => !IsMidi;
+
+    public bool HasLyrics => Lyrics.Count > 0;
+
+    public bool HasNoLyrics => ShowsLyrics && !HasLyrics;
+
+    public bool IsScore => CurrentItem?.Track.Kind == MediaKind.Score;
+
+    public bool IsPlaybackLoading
+    {
+        get => _isPlaybackLoading;
+        private set
+        {
+            if (!SetProperty(ref _isPlaybackLoading, value))
+            {
+                return;
+            }
+
+            TogglePlayCommand.NotifyCanExecuteChanged();
+            PreviousCommand.NotifyCanExecuteChanged();
+            NextCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    public ScorePlaybackSnapshot? ScoreSnapshot => _scoreController?.Snapshot;
+
+    public IReadOnlyList<PlaybackTarget> PlaybackTargets => _scoreController?.Targets ?? [];
+
+    public IReadOnlyList<GameWindowInfo> PlaybackWindows => _scoreController?.Windows ?? [];
+
+    public ScoreTimingSettings ScoreTiming => _scoreController?.Snapshot.Timing ?? ScoreTimingSettings.Default;
+
+    public string IntervalAdjustmentText => $"{ScoreTiming.IntervalAdjustmentMilliseconds:+0;-0;0} ms";
+
+    public string KeyReleaseDelayText => $"{ScoreTiming.KeyReleaseDelayMilliseconds:+0;-0;0} ms";
+
+    public bool IsQueuePopupOpen
+    {
+        get => _isQueuePopupOpen;
+        set => SetProperty(ref _isQueuePopupOpen, value);
+    }
+
+    public bool IsScoreSettingsOpen
+    {
+        get => _isScoreSettingsOpen;
+        set => SetProperty(ref _isScoreSettingsOpen, value);
+    }
+
+    public string? PlaybackError
+    {
+        get => _playbackError;
+        private set => SetProperty(ref _playbackError, value);
+    }
+
+    public string PlayerPageTitle => IsMidi ? "MIDI 钢琴窗" : "沉浸歌词";
+
+    public PlaybackTarget? SelectedPlaybackTarget
+    {
+        get => _scoreController?.Targets.FirstOrDefault(target => target.Id == _scoreController.Snapshot.TargetId);
+        set
+        {
+            if (value is not null && _scoreController is not null && value.Id != _scoreController.Snapshot.TargetId)
+            {
+                _ = _scoreController.SelectTargetAsync(value.Id);
+            }
+        }
+    }
+
+    public GameWindowInfo? SelectedPlaybackWindow
+    {
+        get => _scoreController?.SelectedWindow;
+        set
+        {
+            if (value is not null && _scoreController?.SelectedWindow?.Handle != value.Handle)
+            {
+                _scoreController?.SelectWindow(value.Handle);
+            }
+        }
+    }
 
     public TrackItemViewModel? CurrentItem
     {
@@ -76,6 +230,12 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(DurationText));
             OnPropertyChanged(nameof(CurrentDesktopLyric));
             OnPropertyChanged(nameof(NextDesktopLyric));
+            OnPropertyChanged(nameof(IsMidi));
+            OnPropertyChanged(nameof(IsScore));
+            OnPropertyChanged(nameof(ShowsLyrics));
+            OnPropertyChanged(nameof(HasNoLyrics));
+            OnPropertyChanged(nameof(PlayerPageTitle));
+            LoadMidiVisualization(value);
         }
     }
 
@@ -96,7 +256,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(PositionText));
             if (!_applyingSnapshot)
             {
-                _player.Seek(TimeSpan.FromSeconds(value));
+                QueueSeek(TimeSpan.FromSeconds(value));
             }
         }
     }
@@ -104,7 +264,13 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public double DurationSeconds
     {
         get => _durationSeconds;
-        private set => SetProperty(ref _durationSeconds, Math.Max(1, value));
+        private set
+        {
+            if (SetProperty(ref _durationSeconds, Math.Max(1, value)))
+            {
+                OnPropertyChanged(nameof(DurationText));
+            }
+        }
     }
 
     public bool IsPlaying
@@ -140,7 +306,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public string CurrentDesktopLyric => CurrentLyricIndex >= 0 && CurrentLyricIndex < Lyrics.Count
         ? Lyrics[CurrentLyricIndex].Text
-        : CurrentItem?.Title ?? "SkyMusicPlay";
+        : CurrentItem?.Title ?? "猫橘咪音乐";
 
     public string NextDesktopLyric => CurrentLyricIndex + 1 >= 0 && CurrentLyricIndex + 1 < Lyrics.Count
         ? Lyrics[CurrentLyricIndex + 1].Text
@@ -150,25 +316,71 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public string PositionText => TimeSpan.FromSeconds(PositionSeconds).ToString(@"mm\:ss");
 
-    public string DurationText => CurrentTrack?.Duration.ToString(@"mm\:ss") ?? "00:00";
+    public string DurationText => TimeSpan.FromSeconds(DurationSeconds).ToString(@"mm\:ss");
 
     // 替换播放队列并保持当前曲目索引
     public void SetQueue(IEnumerable<TrackItemViewModel> tracks)
     {
+        var currentId = CurrentItem?.Track.Id;
         Queue.Clear();
         foreach (var track in tracks)
         {
             Queue.Add(track);
         }
 
-        if (CurrentItem is null && Queue.Count > 0)
+        var replacement = currentId is null
+            ? null
+            : Queue.FirstOrDefault(item => item.Track.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase));
+        if (replacement is not null)
         {
-            LoadTrack(Queue[0], false);
+            replacement.IsSelected = true;
+            CurrentItem = replacement;
         }
+        // 刷新曲库只更新队列，不应在每次启动时擅自选中第一首歌曲。
     }
 
-    public void PlayTrack(TrackItemViewModel item, bool autoplay = true)
-        => LoadTrack(item, autoplay);
+    public void PlayTrack(TrackItemViewModel item, bool autoplay = true) =>
+        _ = PlayTrackAsync(item, autoplay);
+
+    // 双击和快速切歌共用一个请求入口：取消旧请求并串行切换后端，避免多个自动演奏会话互相等待。
+    public async Task PlayTrackAsync(TrackItemViewModel item, bool autoplay = true)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var request = new CancellationTokenSource();
+        var previousRequest = Interlocked.Exchange(ref _playbackRequest, request);
+        previousRequest?.Cancel();
+        IsPlaybackLoading = true;
+
+        var entered = false;
+        try
+        {
+            await _playbackGate.WaitAsync(request.Token);
+            entered = true;
+            PlaybackError = null;
+            await LoadTrackAsync(item, autoplay, request.Token);
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
+        {
+            // 新的播放请求已经接管，旧请求安静退出。
+        }
+        catch (Exception exception)
+        {
+            PlaybackError = exception.Message;
+        }
+        finally
+        {
+            if (entered)
+            {
+                _playbackGate.Release();
+            }
+
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _playbackRequest, null, request), request))
+            {
+                IsPlaybackLoading = false;
+            }
+            request.Dispose();
+        }
+    }
 
     public void SetDesktopLyricsVisible(bool isVisible)
     {
@@ -180,7 +392,10 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         DesktopLyricsVisibilityChanged?.Invoke(isVisible);
     }
 
-    private void LoadTrack(TrackItemViewModel item, bool autoplay)
+    private async Task LoadTrackAsync(
+        TrackItemViewModel item,
+        bool autoplay,
+        CancellationToken cancellationToken)
     {
         foreach (var track in Queue)
         {
@@ -188,22 +403,140 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         }
 
         CurrentItem = item;
-        Lyrics.Clear();
-        foreach (var line in item.Track.Lyrics)
-        {
-            Lyrics.Add(new LyricLineViewModel(line));
-        }
+        ReplaceLyrics(item.Track.Lyrics);
 
         CurrentLyricIndex = -1;
+
+        // 键盘演奏依赖当前游戏窗口。每次开始前刷新一次，游戏晚于应用启动时也能自动识别。
+        if (item.Track.Kind == MediaKind.Score && _scoreController is not null)
+        {
+            await _scoreController.RefreshWindowsAsync(cancellationToken);
+            var target = SelectedPlaybackTarget;
+            if (target?.Capabilities.HasFlag(PlaybackSinkCapabilities.ForegroundInput) == true &&
+                _scoreController.SelectedWindow is null)
+            {
+                throw new InvalidOperationException(
+                    "未找到目标游戏窗口，请先启动游戏，或在演奏设置中刷新并选择窗口。");
+            }
+        }
+
+        await _player.LoadAsync(item.Track, autoplay, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         AddRecent(item);
-        _player.Load(item.Track, autoplay);
-        LoadCloudLyrics(item.Track);
+        if (_libraryStore is not null)
+        {
+            _ = RecordPlayedAsync(item.Track);
+        }
+        LoadPreferredLyrics(item.Track);
     }
 
-    // 后台获取歌词并忽略已切换曲目的过期结果
-    private async void LoadCloudLyrics(MusicTrack track)
+    // 导入 LRC/TXT，复制到媒体库并把关联路径持久化到当前曲目。
+    public async Task ImportLocalLyricsAsync(string sourcePath)
     {
-        if (_lyricsProvider is null)
+        if (CurrentItem is null || IsMidi)
+        {
+            return;
+        }
+
+        try
+        {
+            PlaybackError = null;
+            var lines = await LrcLyricsParser.ParseFileAsync(sourcePath);
+            if (lines.Count == 0)
+            {
+                throw new InvalidDataException("歌词文件中没有可显示的歌词。");
+            }
+
+            Directory.CreateDirectory(_localLyricsDirectory);
+            var extension = Path.GetExtension(sourcePath).Equals(".lrc", StringComparison.OrdinalIgnoreCase)
+                ? ".lrc"
+                : ".txt";
+            var targetPath = Path.Combine(_localLyricsDirectory, $"{CurrentItem.Track.Id}{extension}");
+            if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
+            {
+                await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 16 * 1024, true);
+                await using var target = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 16 * 1024, true);
+                await source.CopyToAsync(target);
+            }
+
+            _lyricsRequest?.Cancel();
+            var updatedTrack = CurrentItem.Track with
+            {
+                Lyrics = lines,
+                LyricsSourcePath = targetPath
+            };
+            foreach (var item in Queue.Where(item => item.Track.Id == updatedTrack.Id))
+            {
+                item.UpdateTrack(updatedTrack);
+            }
+            CurrentItem.UpdateTrack(updatedTrack);
+            ReplaceLyrics(lines);
+            UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds), true);
+            if (_libraryStore is not null)
+            {
+                await _libraryStore.UpsertAsync(updatedTrack, null);
+            }
+            MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+        {
+            PlaybackError = $"歌词导入失败：{exception.Message}";
+        }
+    }
+
+    public void SeekToLyric(LyricLineViewModel line) => PositionSeconds = line.Line.Timestamp.TotalSeconds;
+
+    // MIDI 曲目进入播放页时异步读取音符，不阻塞队列切换。
+    private async void LoadMidiVisualization(TrackItemViewModel? item)
+    {
+        MidiNotes.Clear();
+        if (item?.Track.Kind != MediaKind.Midi || string.IsNullOrWhiteSpace(item.Track.SourcePath) ||
+            _midiVisualization is null)
+        {
+            return;
+        }
+
+        var trackId = item.Track.Id;
+        try
+        {
+            var notes = await _midiVisualization.LoadAsync(item.Track.SourcePath);
+            if (CurrentItem?.Track.Id != trackId)
+            {
+                return;
+            }
+            foreach (var note in notes)
+            {
+                MidiNotes.Add(note);
+            }
+        }
+        catch (Exception) when (CurrentItem?.Track.Id == trackId)
+        {
+            MidiNotes.Clear();
+        }
+    }
+
+    // 本地歌词优先于内置歌词和云端歌词，异步结果会校验当前曲目。
+    private async void LoadPreferredLyrics(MusicTrack track)
+    {
+        if (!string.IsNullOrWhiteSpace(track.LyricsSourcePath) && File.Exists(track.LyricsSourcePath))
+        {
+            try
+            {
+                var localLines = await LrcLyricsParser.ParseFileAsync(track.LyricsSourcePath);
+                if (CurrentTrack?.Id == track.Id && localLines.Count > 0)
+                {
+                    ReplaceLyrics(localLines);
+                    UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds), true);
+                }
+            }
+            catch (IOException)
+            {
+                // 本地歌词损坏时继续使用曲目内置歌词。
+            }
+            return;
+        }
+
+        if (track.Lyrics.Count > 0 || _lyricsProvider is null)
         {
             return;
         }
@@ -224,18 +557,24 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                Lyrics.Clear();
-                foreach (var line in result.Lines)
-                {
-                    Lyrics.Add(new LyricLineViewModel(line));
-                }
-
-                UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds));
+                ReplaceLyrics(result.Lines);
+                UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds), true);
             });
         }
         catch (OperationCanceledException)
         {
         }
+    }
+
+    private void ReplaceLyrics(IEnumerable<LyricLine> lines)
+    {
+        Lyrics.Clear();
+        foreach (var line in lines)
+        {
+            Lyrics.Add(new LyricLineViewModel(line));
+        }
+        OnPropertyChanged(nameof(HasLyrics));
+        OnPropertyChanged(nameof(HasNoLyrics));
     }
 
     private void AddRecent(TrackItemViewModel item)
@@ -249,28 +588,119 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         RecentTracks.Insert(0, item);
     }
 
-    private void TogglePlay()
+    private async Task TogglePlayAsync()
     {
-        if (_player.Snapshot.State == PlaybackState.Playing)
+        try
         {
-            _player.Pause();
+            PlaybackError = null;
+            if (_player.Snapshot.State == PlaybackState.Playing)
+            {
+                await _player.PauseAsync();
+            }
+            else
+            {
+                await _player.PlayAsync();
+            }
         }
-        else
+        catch (Exception exception)
         {
-            _player.Play();
+            PlaybackError = exception.Message;
         }
     }
 
-    private void MoveTrack(int offset)
+    private async Task ToggleFavoriteAsync(TrackItemViewModel? item)
     {
-        if (Queue.Count == 0)
+        if (item is null || _libraryStore is null)
         {
             return;
         }
 
+        item.IsFavorite = !item.IsFavorite;
+        await _libraryStore.UpsertAsync(item.Track, null);
+        await _libraryStore.SetFavoriteAsync(item.Track.Id, item.IsFavorite);
+        MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async Task RecordPlayedAsync(MusicTrack track)
+    {
+        if (_libraryStore is null)
+        {
+            return;
+        }
+        await _libraryStore.UpsertAsync(track, null);
+        await _libraryStore.RecordPlayedAsync(track.Id);
+        MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private Task AdjustTimingAsync(int intervalDelta, int releaseDelayDelta)
+    {
+        if (_scoreController is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var current = _scoreController.Snapshot.Timing;
+        return _scoreController.SetTimingAsync(new ScoreTimingSettings(
+            Math.Clamp(current.IntervalAdjustmentMilliseconds + intervalDelta, -200, 500),
+            Math.Clamp(current.KeyReleaseDelayMilliseconds + releaseDelayDelta, -200, 1_000))).AsTask();
+    }
+
+    private void OnScoreControllerChanged(ScorePlaybackSnapshot snapshot) => Dispatcher.UIThread.Post(() =>
+    {
+        OnPropertyChanged(nameof(ScoreSnapshot));
+        OnPropertyChanged(nameof(PlaybackTargets));
+        OnPropertyChanged(nameof(PlaybackWindows));
+        OnPropertyChanged(nameof(SelectedPlaybackTarget));
+        OnPropertyChanged(nameof(SelectedPlaybackWindow));
+        OnPropertyChanged(nameof(ScoreTiming));
+        OnPropertyChanged(nameof(IntervalAdjustmentText));
+        OnPropertyChanged(nameof(KeyReleaseDelayText));
+    });
+
+    private Task MoveTrackAsync(int offset)
+    {
+        if (Queue.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
         var currentIndex = CurrentItem is null ? 0 : Queue.IndexOf(CurrentItem);
         var nextIndex = (currentIndex + offset + Queue.Count) % Queue.Count;
-        LoadTrack(Queue[nextIndex], true);
+        return PlayTrackAsync(Queue[nextIndex], true);
+    }
+
+    // 拖动进度条时只保留最后一次跳转，避免高频 Seek 堵塞自动演奏控制器。
+    private void QueueSeek(TimeSpan position)
+    {
+        var request = new CancellationTokenSource();
+        var previousRequest = Interlocked.Exchange(ref _seekRequest, request);
+        previousRequest?.Cancel();
+        _ = SeekAsync(position, request);
+    }
+
+    private async Task SeekAsync(TimeSpan position, CancellationTokenSource request)
+    {
+        try
+        {
+            await _player.SeekAsync(position, request.Token);
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            PlaybackError = exception.Message;
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _seekRequest, null, request);
+            request.Dispose();
+        }
+    }
+
+    private void SetPlaybackError(Exception exception)
+    {
+        PlaybackError = exception.Message;
     }
 
     private void OnSnapshotChanged(object? sender, PlaybackSnapshot snapshot)
@@ -287,13 +717,14 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
                 var item = Queue.FirstOrDefault(track => track.Track.Id == snapshot.Track.Id);
                 if (item is not null)
                 {
-                    LoadTrack(item, false);
+                    PlayTrack(item, false);
                 }
             }
 
             DurationSeconds = snapshot.Duration.TotalSeconds;
             PositionSeconds = snapshot.Position.TotalSeconds;
             IsPlaying = snapshot.State == PlaybackState.Playing;
+            PersistResolvedDuration(snapshot.Duration);
             UpdateCurrentLyric(snapshot.Position);
         }
         finally
@@ -302,8 +733,26 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         }
     }
 
+    // FFprobe 得到真实时长后立即更新列表项和数据库，避免旧记录下次仍显示 00:01。
+    private void PersistResolvedDuration(TimeSpan duration)
+    {
+        if (CurrentItem is null || duration <= TimeSpan.FromSeconds(1) ||
+            CurrentItem.Track.Duration > TimeSpan.FromSeconds(1))
+        {
+            return;
+        }
+
+        var updatedTrack = CurrentItem.Track with { Duration = duration };
+        CurrentItem.UpdateTrack(updatedTrack);
+        OnPropertyChanged(nameof(CurrentTrack));
+        if (_libraryStore is not null)
+        {
+            _ = _libraryStore.UpsertAsync(updatedTrack, null);
+        }
+    }
+
     // 按播放位置选择当前歌词并更新高亮
-    private void UpdateCurrentLyric(TimeSpan position)
+    private void UpdateCurrentLyric(TimeSpan position, bool forceRefresh = false)
     {
         var index = -1;
         for (var i = 0; i < Lyrics.Count; i++)
@@ -316,7 +765,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             index = i;
         }
 
-        if (index == CurrentLyricIndex)
+        if (!forceRefresh && index == CurrentLyricIndex)
         {
             return;
         }
@@ -324,14 +773,20 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         CurrentLyricIndex = index;
         for (var i = 0; i < Lyrics.Count; i++)
         {
-            Lyrics[i].IsCurrent = i == index;
+            Lyrics[i].Distance = index < 0 ? 4 : Math.Abs(i - index);
         }
     }
 
     public void Dispose()
     {
+        _playbackRequest?.Cancel();
+        _seekRequest?.Cancel();
         _lyricsRequest?.Cancel();
         _lyricsRequest?.Dispose();
         _player.SnapshotChanged -= OnSnapshotChanged;
+        if (_scoreController is not null)
+        {
+            _scoreController.Changed -= OnScoreControllerChanged;
+        }
     }
 }

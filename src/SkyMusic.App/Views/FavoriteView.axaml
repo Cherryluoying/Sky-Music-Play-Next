@@ -2,14 +2,28 @@
 <UserControl x:Class="SkyMusic.App.Views.FavoriteView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="using:SkyMusic.App.Controls">
+             xmlns:controls="using:SkyMusic.App.Controls"
+             xmlns:vm="using:SkyMusic.App.ViewModels">
   <Grid RowDefinitions="56,*">
-    <controls:SkyWindowHeader Title="{Binding Title}" />
-    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-      <TextBlock Text="&#xEB51;" FontFamily="Segoe Fluent Icons" FontSize="38"
-                 Foreground="{StaticResource SkyBrushTextTertiary}" HorizontalAlignment="Center" />
-      <TextBlock Text="还没有收藏内容" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-      <TextBlock Text="{Binding Description}" Classes="sky-secondary" HorizontalAlignment="Center" />
-    </StackPanel>
+    <controls:SkyWindowHeader Title="{Binding Title}">
+      <controls:SkyWindowHeader.TrailingContent>
+        <controls:SkySearchBox Width="240" Text="{Binding Library.SearchText}" Watermark="搜索我喜欢的音乐" />
+      </controls:SkyWindowHeader.TrailingContent>
+    </controls:SkyWindowHeader>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="28,18,28,40" Spacing="8">
+        <Grid ColumnDefinitions="36,50,*,130,52,40">
+          <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
+          <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
+          <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />
+          <TextBlock Grid.Column="4" Text="时长" Classes="sky-caption" HorizontalAlignment="Right" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Library.FavoriteTracks}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel"><controls:TrackRow /></DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
   </Grid>
 </UserControl>

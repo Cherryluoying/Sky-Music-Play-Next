@@ -24,7 +24,7 @@ public static class DefaultPlaybackTargets
                     "兼容原版 YUIOP / HJKL; / NM,./ 键位",
                     15,
                     keyboardCapabilities,
-                    ["Sky"]),
+                    ["Sky", "Sky-Windows", "SkyClient"]),
                 () => new WindowsScanCodeSink(LegacySky15KeyProfile.Create())),
             new(
                 new PlaybackTarget(
@@ -33,7 +33,7 @@ public static class DefaultPlaybackTargets
                     "低中高三个七声音阶键盘布局",
                     21,
                     keyboardCapabilities,
-                    ["YuanShen", "GenshinImpact"]),
+                    ["YuanShen", "GenshinImpact", "Genshin"]),
                 () => new WindowsScanCodeSink(Genshin21KeyProfile.Create()))
         };
 

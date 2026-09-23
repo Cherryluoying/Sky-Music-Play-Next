@@ -18,9 +18,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ScoreEditorViewModel _scoreEditor;
     private readonly TranscriptionViewModel _transcription;
     private readonly MacroRunnerViewModel _macroRunner;
+    private readonly LibraryViewModel _library;
     private AppPage _currentPage = AppPage.Discover;
     private object _currentPageViewModel;
     private bool _isPlayerVisible;
+    private string _globalSearchText = string.Empty;
+    private bool _isGlobalSearchOpen;
+    private CancellationTokenSource? _searchRequest;
+    private readonly IMediaLibraryStore _mediaLibraryStore;
+    private readonly CoverImageService _coverImages;
 
     public IScorePlaybackController ScorePlaybackController { get; }
 
@@ -40,10 +46,22 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         IAppSettingsStore appSettingsStore,
         AppSettings appSettings,
         IFfmpegService ffmpegService,
-        ILyricsProvider? lyricsProvider = null)
+        IMediaLibraryStore mediaLibraryStore,
+        IMediaImportService mediaImporter,
+        IMidiVisualizationService midiVisualization,
+        ILyricsProvider? lyricsProvider = null,
+        string? localLyricsDirectory = null)
     {
+        _mediaLibraryStore = mediaLibraryStore;
+        _coverImages = coverImages;
         ScorePlaybackController = scorePlaybackController;
-        Playback = new PlaybackViewModel(player, lyricsProvider);
+        Playback = new PlaybackViewModel(
+            player,
+            lyricsProvider,
+            mediaLibraryStore,
+            scorePlaybackController,
+            midiVisualization,
+            localLyricsDirectory);
         _tasks = new TasksViewModel(scorePlaybackController);
         _midiStudio = new MidiStudioViewModel(
             new MidiInputCapture(),
@@ -63,32 +81,47 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             ffmpegService,
             () => NavigateTo(AppPage.KeyMapping, true));
 
-        var discover = new DiscoverViewModel(catalog, coverImages, Playback);
+        var discover = new DiscoverViewModel(catalog, coverImages, Playback, mediaLibraryStore);
+        _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback);
         _pages = new Dictionary<AppPage, object>
         {
             [AppPage.Discover] = discover,
-            [AppPage.Library] = new LibraryViewModel(Playback),
-            [AppPage.Favorites] = new FavoriteViewModel(),
-            [AppPage.Recent] = new RecentViewModel(Playback),
+            [AppPage.Library] = _library,
+            [AppPage.Favorites] = new FavoriteViewModel(_library),
+            [AppPage.Recent] = new RecentViewModel(_library),
             [AppPage.Tasks] = _tasks,
             [AppPage.MidiStudio] = _midiStudio,
             [AppPage.ScoreEditor] = _scoreEditor,
-            [AppPage.KeyMapping] = new KeyMappingViewModel(keyMappingStore, keyMappings),
+            [AppPage.KeyMapping] = new KeyMappingViewModel(
+                keyMappingStore,
+                keyMappings,
+                mappings => scorePlaybackController.ReloadCustomKeyMappingsAsync(mappings).AsTask()),
             [AppPage.Transcription] = _transcription,
             [AppPage.MacroRunner] = _macroRunner,
             [AppPage.Settings] = settings
         };
         _currentPageViewModel = discover;
 
+        var discoverItem = new NavigationItemViewModel("发现音乐", "\uE80F", AppPage.Discover);
+        var libraryItem = new NavigationItemViewModel("本地歌单", "\uE8D6", AppPage.Library);
+        var tasksItem = new NavigationItemViewModel("演奏任务", "\uE714", AppPage.Tasks);
+        var midiItem = new NavigationItemViewModel("MIDI 工作台", "\uE9D9", AppPage.MidiStudio);
+        var scoreEditorItem = new NavigationItemViewModel("谱面编辑", "\uE70F", AppPage.ScoreEditor);
+        var transcriptionItem = new NavigationItemViewModel("音频转 MIDI", "\uE8D4", AppPage.Transcription);
+        var macroItem = new NavigationItemViewModel("宏脚本", "\uE756", AppPage.MacroRunner);
+
+        DiscoveryNavigationItems = [discoverItem, libraryItem];
+        PerformanceNavigationItems = [midiItem];
+        ToolNavigationItems = [scoreEditorItem, transcriptionItem, macroItem];
         PrimaryNavigationItems =
         [
-            new NavigationItemViewModel("发现音乐", "\uE80F", AppPage.Discover),
-            new NavigationItemViewModel("乐谱库", "\uE8D6", AppPage.Library),
-            new NavigationItemViewModel("演奏任务", "\uE714", AppPage.Tasks),
-            new NavigationItemViewModel("MIDI 工作台", "\uE9D9", AppPage.MidiStudio),
-            new NavigationItemViewModel("谱面编辑", "\uE70F", AppPage.ScoreEditor),
-            new NavigationItemViewModel("音频转 MIDI", "\uE8D4", AppPage.Transcription),
-            new NavigationItemViewModel("宏脚本", "\uE756", AppPage.MacroRunner)
+            discoverItem,
+            libraryItem,
+            tasksItem,
+            midiItem,
+            scoreEditorItem,
+            transcriptionItem,
+            macroItem
         ];
         MusicNavigationItems =
         [
@@ -115,11 +148,37 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<NavigationItemViewModel> PrimaryNavigationItems { get; }
 
+    public IReadOnlyList<NavigationItemViewModel> DiscoveryNavigationItems { get; }
+
+    public IReadOnlyList<NavigationItemViewModel> PerformanceNavigationItems { get; }
+
+    public IReadOnlyList<NavigationItemViewModel> ToolNavigationItems { get; }
+
     public ObservableCollection<NavigationItemViewModel> MusicNavigationItems { get; }
 
     public NavigationItemViewModel SettingsNavigationItem { get; }
 
     public PlaybackViewModel Playback { get; }
+
+    public ObservableCollection<TrackItemViewModel> GlobalSearchResults { get; } = [];
+
+    public string GlobalSearchText
+    {
+        get => _globalSearchText;
+        set
+        {
+            if (SetProperty(ref _globalSearchText, value))
+            {
+                SearchGlobalLibrary(value);
+            }
+        }
+    }
+
+    public bool IsGlobalSearchOpen
+    {
+        get => _isGlobalSearchOpen;
+        private set => SetProperty(ref _isGlobalSearchOpen, value);
+    }
 
     public RelayCommand NavigateCommand { get; }
 
@@ -213,13 +272,67 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private void OnOpenPlayerRequested(object? sender, EventArgs e)
         => IsPlayerVisible = true;
 
+    // 全局搜索读取 SQLite 单一曲目表，并按主键去重后显示。
+    private async void SearchGlobalLibrary(string query)
+    {
+        _searchRequest?.Cancel();
+        _searchRequest?.Dispose();
+        _searchRequest = new CancellationTokenSource();
+        var cancellationToken = _searchRequest.Token;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            GlobalSearchResults.Clear();
+            IsGlobalSearchOpen = false;
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(160, cancellationToken);
+            var records = await _mediaLibraryStore.GetAllAsync(cancellationToken);
+            var filtered = records
+                .Where(record => record.Track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                                 record.Track.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                                 record.Track.Author.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                                 record.Track.Album.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(record => record.Track.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .Take(12)
+                .ToArray();
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                GlobalSearchResults.Clear();
+                foreach (var record in filtered)
+                {
+                    GlobalSearchResults.Add(new TrackItemViewModel(
+                        record.Track,
+                        _coverImages.GetCover(record.Track.CoverSource),
+                        item =>
+                        {
+                            Playback.PlayTrack(item);
+                            IsGlobalSearchOpen = false;
+                        },
+                        item => Playback.ToggleFavoriteCommand.Execute(item),
+                        record.IsFavorite));
+                }
+                IsGlobalSearchOpen = GlobalSearchResults.Count > 0;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     public void Dispose()
     {
         Playback.OpenPlayerRequested -= OnOpenPlayerRequested;
+        _searchRequest?.Cancel();
+        _searchRequest?.Dispose();
         _tasks.Dispose();
         _midiStudio.Dispose();
         _transcription.Dispose();
         _macroRunner.Dispose();
+        _library.Dispose();
         Playback.Dispose();
     }
 }

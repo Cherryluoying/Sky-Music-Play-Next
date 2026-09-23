@@ -1,5 +1,6 @@
 // 模块：SkyMusic.Core 桌面服务 IScorePlaybackController
 using SkyMusic.Core.Importing;
+using SkyMusic.Core.Mapping;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Playback;
 
@@ -38,4 +39,8 @@ public interface IScorePlaybackController : IAsyncDisposable
     ValueTask SetSpeedAsync(double speed, CancellationToken cancellationToken = default);
 
     ValueTask SetTimingAsync(ScoreTimingSettings timing, CancellationToken cancellationToken = default);
+
+    ValueTask ReloadCustomKeyMappingsAsync(
+        IReadOnlyList<KeyMappingDefinition> mappings,
+        CancellationToken cancellationToken = default);
 }

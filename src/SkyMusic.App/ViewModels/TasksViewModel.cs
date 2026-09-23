@@ -26,7 +26,6 @@ public sealed class TasksViewModel : ObservableObject, IDisposable
     public TasksViewModel(IScorePlaybackController controller)
     {
         _controller = controller;
-        Targets = controller.Targets;
         _selectedTarget = Targets.First(target => target.Id == controller.Snapshot.TargetId);
 
         StartPauseCommand = new AsyncRelayCommand(
@@ -72,7 +71,7 @@ public sealed class TasksViewModel : ObservableObject, IDisposable
 
     public string Title => "演奏任务";
 
-    public IReadOnlyList<PlaybackTarget> Targets { get; }
+    public IReadOnlyList<PlaybackTarget> Targets => _controller.Targets;
 
     public AsyncRelayCommand StartPauseCommand { get; }
 
@@ -278,6 +277,18 @@ public sealed class TasksViewModel : ObservableObject, IDisposable
         }
         else
         {
+            // 游戏窗口可能是在打开任务页之后才启动；开始前再刷新一次目标句柄。
+            if (RequiresWindow && _controller.SelectedWindow is null)
+            {
+                await RefreshWindowsAsync();
+            }
+
+            if (RequiresWindow && _controller.SelectedWindow is null)
+            {
+                StatusText = "没有找到目标游戏窗口，请先启动游戏并点击右侧刷新按钮后选择窗口";
+                return;
+            }
+
             await _controller.StartAsync();
         }
     }
@@ -358,6 +369,15 @@ public sealed class TasksViewModel : ObservableObject, IDisposable
         Speed = snapshot.Session.Speed;
         IntervalAdjustment = snapshot.Timing.IntervalAdjustmentMilliseconds;
         KeyReleaseDelay = snapshot.Timing.KeyReleaseDelayMilliseconds;
+        OnPropertyChanged(nameof(Targets));
+        var activeTarget = Targets.FirstOrDefault(target => target.Id == snapshot.TargetId);
+        if (activeTarget is not null && !Equals(_selectedTarget, activeTarget))
+        {
+            _selectedTarget = activeTarget;
+            OnPropertyChanged(nameof(SelectedTarget));
+            OnPropertyChanged(nameof(TargetDescription));
+            OnPropertyChanged(nameof(RequiresWindow));
+        }
         OnPropertyChanged(nameof(Windows));
         if (!Equals(_selectedWindow, _controller.SelectedWindow))
         {

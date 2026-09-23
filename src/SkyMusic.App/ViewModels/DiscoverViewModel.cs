@@ -10,6 +10,7 @@ public sealed class DiscoverViewModel : ObservableObject
     private readonly IMusicCatalog _catalog;
     private readonly CoverImageService _coverImages;
     private readonly PlaybackViewModel _playback;
+    private readonly IMediaLibraryStore? _mediaLibrary;
     private readonly List<TrackItemViewModel> _allTracks = [];
     private string _searchText = string.Empty;
     private TrackItemViewModel? _bannerTrack;
@@ -19,11 +20,13 @@ public sealed class DiscoverViewModel : ObservableObject
     public DiscoverViewModel(
         IMusicCatalog catalog,
         CoverImageService coverImages,
-        PlaybackViewModel playback)
+        PlaybackViewModel playback,
+        IMediaLibraryStore? mediaLibrary = null)
     {
         _catalog = catalog;
         _coverImages = coverImages;
         _playback = playback;
+        _mediaLibrary = mediaLibrary;
         _ = InitializeAsync();
     }
 
@@ -32,6 +35,9 @@ public sealed class DiscoverViewModel : ObservableObject
     public ObservableCollection<TrackItemViewModel> PopularTracks { get; } = [];
 
     public ObservableCollection<TrackItemViewModel> LatestTracks { get; } = [];
+
+    // 首页只读展示播放器的最近播放队列，不改变播放器核心状态。
+    public PlaybackViewModel Playback => _playback;
 
     public IReadOnlyList<CategoryItemViewModel> Categories { get; } =
     [
@@ -82,8 +88,13 @@ public sealed class DiscoverViewModel : ObservableObject
                 var item = new TrackItemViewModel(
                     track,
                     _coverImages.GetCover(track.CoverSource),
-                    selected => _playback.PlayTrack(selected));
+                    selected => _playback.PlayTrack(selected),
+                    favorite => _playback.ToggleFavoriteCommand.Execute(favorite));
                 _allTracks.Add(item);
+                if (_mediaLibrary is not null)
+                {
+                    await _mediaLibrary.UpsertAsync(track, null);
+                }
             }
 
             _playback.SetQueue(_allTracks);

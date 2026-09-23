@@ -16,7 +16,8 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
     private readonly IMusicProjectStore _projectStore;
     private readonly IGameScoreStore _gameScoreStore;
     private MusicProject _project;
-    private WorkbenchMode _mode;
+    // 游戏编谱是工作台的默认入口，专业半 DAW 通过顶部模式按钮进入。
+    private WorkbenchMode _mode = WorkbenchMode.GameComposer;
     private string _statusText = "就绪";
 
     public WorkbenchWindowViewModel(
@@ -36,15 +37,17 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
             playbackController,
             assets,
             instrumentPreview ?? new NativeInstrumentPreviewService(assets));
+        Professional = new ProfessionalWorkspaceViewModel(_project, UpdateProfessionalProject, playbackController);
         SwitchToGameComposerCommand = new RelayCommand(_ => Mode = WorkbenchMode.GameComposer);
         SwitchToProfessionalCommand = new RelayCommand(_ => Mode = WorkbenchMode.Professional);
         NewProjectCommand = new RelayCommand(_ => NewProject());
-        AddTrackCommand = new RelayCommand(_ => AddTrack());
+        AddTrackCommand = new RelayCommand(_ => Professional.AddTrackCommand.Execute(null));
         RefreshProjectState();
     }
 
     public ObservableCollection<WorkbenchTrackViewModel> Tracks { get; } = [];
     public GameComposerViewModel Composer { get; }
+    public ProfessionalWorkspaceViewModel Professional { get; }
     public string ProjectTitle => _project.Metadata.Title;
     public string ProjectSummary => $"{_project.Ppq} PPQ · {_project.Tracks.Count} 轨道 · {Composer.Document.Columns.Count} 列";
 
@@ -90,6 +93,7 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
             var result = await new MidiScoreImporter().ImportAsync(source, sourceName, cancellationToken);
             if (!result.IsSuccess || result.Score is null)
                 throw new InvalidDataException(string.Join("; ", result.Issues.Select(issue => issue.Message)));
+            _project = new MusicProjectScoreConverter().FromScore(result.Score);
             Composer.LoadMidiScore(result.Score);
             SetProjectTitle(result.Score.Title);
         }
@@ -102,6 +106,7 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
         }
         StatusText = Composer.StatusText;
         RefreshProjectState();
+        Professional.LoadProject(_project, StatusText);
     }
 
     // 将当前工作区快照保存为工程文件
@@ -128,7 +133,9 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
 
     public void ExportMidi(Stream destination)
     {
-        var score = new GameScorePlaybackConverter().ToScore(Composer.Document, 0);
+        var score = Mode == WorkbenchMode.Professional
+            ? new MusicProjectScoreConverter().ToScore(_project)
+            : new GameScorePlaybackConverter().ToScore(Composer.Document, 0);
         new MidiScoreExporter().Export(score, destination);
         StatusText = "MIDI 已导出";
     }
@@ -137,22 +144,9 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
     {
         _project = CreateBlankProject();
         Composer.LoadDocument(CurrentGameScore(), "已创建新工程");
+        Professional.LoadProject(_project, "已创建新工程");
         StatusText = "已创建新工程";
         RefreshProjectState();
-    }
-
-    private void AddTrack()
-    {
-        var index = _project.Tracks.Count;
-        var track = new ProjectTrack(
-            Guid.NewGuid(),
-            $"Track {index + 1}",
-            ProjectTrackKind.Instrument,
-            TrackColor(index),
-            []);
-        _project = _project with { Tracks = _project.Tracks.Append(track).ToArray() };
-        StatusText = $"已添加 {track.Name}";
-        RefreshTracks();
     }
 
     // 把编谱文档回写到统一工程编排
@@ -169,6 +163,13 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
             };
         _project = _project with { GameArrangements = [updated] };
         OnPropertyChanged(nameof(ProjectSummary));
+    }
+
+    private void UpdateProfessionalProject(MusicProject project)
+    {
+        _project = project;
+        StatusText = Professional.StatusText;
+        RefreshProjectState();
     }
 
     private void SetProjectTitle(string title)
@@ -225,15 +226,9 @@ public sealed class WorkbenchWindowViewModel : ObservableObject, IDisposable
             new Dictionary<Guid, int>(),
             GameScore: document);
 
-    private static string TrackColor(int index) => (index % 6) switch
+    public void Dispose()
     {
-        0 => "#3B82F6",
-        1 => "#8B5CF6",
-        2 => "#10B981",
-        3 => "#F59E0B",
-        4 => "#06B6D4",
-        _ => "#EC4899"
-    };
-
-    public void Dispose() => Composer.Dispose();
+        Composer.Dispose();
+        Professional.Dispose();
+    }
 }

@@ -1,7 +1,7 @@
-// 模块：SkyMusic.App 界面状态 RecentViewModel
+// 模块：SkyMusic.App 最近播放页面状态
 namespace SkyMusic.App.ViewModels;
 
-public sealed class RecentViewModel(PlaybackViewModel playback)
+public sealed class RecentViewModel(LibraryViewModel library)
 {
-    public PlaybackViewModel Playback { get; } = playback;
+    public LibraryViewModel Library { get; } = library;
 }

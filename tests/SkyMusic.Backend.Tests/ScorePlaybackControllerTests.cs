@@ -1,6 +1,7 @@
 // 模块：SkyMusic.Backend.Tests 后端测试 ScorePlaybackControllerTests
 using System.Collections.Concurrent;
 using SkyMusic.Core.Importing;
+using SkyMusic.Core.Mapping;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Playback;
 using SkyMusic.Core.Services;
@@ -108,6 +109,29 @@ public sealed class ScorePlaybackControllerTests
 
         await controller.LoadAsync("second.txt");
         Assert.Equal(ScoreTimingSettings.Default, controller.Snapshot.Timing);
+    }
+
+    [Fact]
+    public async Task ReloadsCustomMappingsWithoutDroppingLoadedScore()
+    {
+        var firstSink = new RecordingSink("First");
+        var secondSink = new RecordingSink("Second");
+        await using var controller = CreateController(firstSink, secondSink);
+        await controller.LoadAsync("score.txt");
+        await controller.SeekAsync(1_000);
+
+        await controller.ReloadCustomKeyMappingsAsync(
+        [
+            new KeyMappingDefinition(
+                "live",
+                "Live mapping",
+                [new KeyMappingEntry(60, 30)])
+        ]);
+
+        Assert.Contains(controller.Targets, target => target.Id == "custom:live");
+        Assert.Equal("Test score", controller.Snapshot.ScoreTitle);
+        Assert.Equal(1_000, controller.Snapshot.Session.PositionMicroseconds);
+        Assert.Equal("sky-15", controller.Snapshot.TargetId);
     }
 
     private static ScorePlaybackController CreateController(

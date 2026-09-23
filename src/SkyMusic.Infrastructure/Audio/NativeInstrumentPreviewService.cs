@@ -11,9 +11,11 @@ public sealed class NativeInstrumentPreviewService(IInstrumentAssetCatalog asset
     private readonly ConcurrentDictionary<string, Lazy<Task<uint>>> _sampleSlots =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _decodeGate = new(2, 2);
+    private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly object _nativeGate = new();
     private IntPtr _preview;
     private int _nextSlot = -1;
+    private int _disposeStarted;
     private bool _disposed;
 
     // 在非实时线程预解码当前乐器采样
@@ -22,17 +24,25 @@ public sealed class NativeInstrumentPreviewService(IInstrumentAssetCatalog asset
         string instrumentId,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        var instrument = assets.Find(profile, instrumentId);
-        if (instrument is null)
-            return;
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var instrument = assets.Find(profile, instrumentId);
+            if (instrument is null)
+                return;
 
-        var loads = instrument.SamplePaths.Select(path => _sampleSlots.GetOrAdd(
-            path,
-            samplePath => new Lazy<Task<uint>>(
-                () => LoadAsync(samplePath, cancellationToken),
-                LazyThreadSafetyMode.ExecutionAndPublication)).Value);
-        await Task.WhenAll(loads).WaitAsync(cancellationToken);
+            var loads = instrument.SamplePaths.Select(path => _sampleSlots.GetOrAdd(
+                path,
+                samplePath => new Lazy<Task<uint>>(
+                    () => LoadAsync(samplePath, cancellationToken),
+                    LazyThreadSafetyMode.ExecutionAndPublication)).Value);
+            await Task.WhenAll(loads).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
     }
 
     // 触发已缓存采样并在缺失时按需加载
@@ -43,26 +53,34 @@ public sealed class NativeInstrumentPreviewService(IInstrumentAssetCatalog asset
         int volume,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        var path = assets.GetSamplePath(profile, instrumentId, noteIndex);
-        if (path is null)
-            throw new FileNotFoundException("乐器采样不存在", path);
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var path = assets.GetSamplePath(profile, instrumentId, noteIndex);
+            if (path is null)
+                throw new FileNotFoundException("乐器采样不存在", path);
 
-        var slot = await _sampleSlots.GetOrAdd(
-            path,
-            samplePath => new Lazy<Task<uint>>(
-                () => LoadAsync(samplePath, cancellationToken),
-                LazyThreadSafetyMode.ExecutionAndPublication)).Value;
-        cancellationToken.ThrowIfCancellationRequested();
-        var gain = Math.Clamp(volume / 127f, 0f, 1f);
-        if (Trigger(slot, gain) != 0)
-            throw new IOException("乐器采样无法播放");
+            var slot = await _sampleSlots.GetOrAdd(
+                path,
+                samplePath => new Lazy<Task<uint>>(
+                    () => LoadAsync(samplePath, cancellationToken),
+                    LazyThreadSafetyMode.ExecutionAndPublication)).Value.ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            var gain = Math.Clamp(volume / 127f, 0f, 1f);
+            if (Trigger(slot, gain) != 0)
+                throw new IOException("乐器采样无法播放");
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
     }
 
     // 限制并发解码数量以避免切换乐器时阻塞
     private async Task<uint> LoadAsync(string path, CancellationToken cancellationToken)
     {
-        await _decodeGate.WaitAsync(cancellationToken);
+        await _decodeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var slot = Interlocked.Increment(ref _nextSlot);
@@ -71,7 +89,7 @@ public sealed class NativeInstrumentPreviewService(IInstrumentAssetCatalog asset
 
             var result = await Task.Run(
                 () => Load((uint)slot, path),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             if (result != 0)
                 throw new InvalidDataException($"无法解码乐器采样 {Path.GetFileName(path)}");
             return (uint)slot;
@@ -110,16 +128,29 @@ public sealed class NativeInstrumentPreviewService(IInstrumentAssetCatalog asset
 
     public void Dispose()
     {
-        lock (_nativeGate)
+        if (Interlocked.Exchange(ref _disposeStarted, 1) != 0)
+            return;
+
+        _operationGate.Wait();
+        try
         {
-            if (_disposed)
-                return;
-            _disposed = true;
-            if (_preview != IntPtr.Zero)
+            lock (_nativeGate)
             {
-                NativeAudioPreview.skymusic_audio_preview_destroy(_preview);
-                _preview = IntPtr.Zero;
+                if (_disposed)
+                    return;
+                _disposed = true;
+                if (_preview != IntPtr.Zero)
+                {
+                    NativeAudioPreview.skymusic_audio_preview_destroy(_preview);
+                    _preview = IntPtr.Zero;
+                }
             }
+        }
+        finally
+        {
+            _operationGate.Release();
+            _operationGate.Dispose();
+            _decodeGate.Dispose();
         }
     }
 }

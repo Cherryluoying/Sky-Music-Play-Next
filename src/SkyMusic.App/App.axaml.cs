@@ -1,5 +1,6 @@
 // 模块：SkyMusic.App 通用模型 App.axaml
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using SkyMusic.App.Services;
@@ -24,22 +25,24 @@ namespace SkyMusic.App;
 
 public sealed partial class App : Application
 {
-    private PreviewPlaybackController? _playbackController;
+    private IPlaybackController? _playbackController;
     private CoverImageService? _coverImages;
     private MainWindowViewModel? _mainViewModel;
     private IScorePlaybackController? _scorePlaybackController;
     private HttpClient? _cloudClient;
     private IKeyMappingStore? _keyMappingStore;
     private IAppSettingsStore? _appSettingsStore;
+    private WindowsGlobalHotkeyService? _globalHotkeys;
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+        => AvaloniaXamlLoader.Load(this);
 
     // 组装服务依赖并创建主窗口或独立工作区
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            _playbackController = new PreviewPlaybackController();
+            desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             _coverImages = new CoverImageService();
             var appData = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -48,7 +51,7 @@ public sealed partial class App : Application
             AppSettings appSettings;
             try
             {
-                appSettings = _appSettingsStore.LoadAsync().AsTask().GetAwaiter().GetResult();
+                appSettings = Task.Run(async () => await _appSettingsStore.LoadAsync()).GetAwaiter().GetResult();
             }
             catch (Exception exception) when (exception is IOException or JsonException or ArgumentException)
             {
@@ -71,7 +74,7 @@ public sealed partial class App : Application
             IReadOnlyList<SkyMusic.Core.Mapping.KeyMappingDefinition> keyMappings;
             try
             {
-                keyMappings = _keyMappingStore.LoadAsync().AsTask().GetAwaiter().GetResult();
+                keyMappings = Task.Run(async () => await _keyMappingStore.LoadAsync()).GetAwaiter().GetResult();
             }
             catch (Exception exception) when (exception is IOException or JsonException or ArgumentException)
             {
@@ -84,6 +87,7 @@ public sealed partial class App : Application
                 AppContext.BaseDirectory,
                 appSettings.ExternalTools.PianoTransPath);
             var ffmpegService = new FfmpegService(AppContext.BaseDirectory, pianoTransDirectory);
+            var ffmpegPath = ffmpegService.Locate(appSettings.ExternalTools.FfmpegPath);
             _scorePlaybackController = new ScorePlaybackController(
                 new ScoreImportService(),
                 new ScoreTimelineCompiler(),
@@ -91,13 +95,26 @@ public sealed partial class App : Application
                 windowService,
                 DefaultPlaybackTargets.Create(keyMappings),
                 monitor: playbackMonitor);
+            _playbackController = new UnifiedPlaybackController(_scorePlaybackController, ffmpegPath);
+            var mediaLibraryDirectory = Path.Combine(appData, "Library");
+            foreach (var directoryName in new[] { "music", "midi", "musicscore", "lyrics" })
+            {
+                Directory.CreateDirectory(Path.Combine(mediaLibraryDirectory, directoryName));
+            }
+            var mediaLibraryStore = new SqliteMediaLibraryStore(Path.Combine(mediaLibraryDirectory, "library.db"));
+            Task.Run(() => mediaLibraryStore.InitializeAsync()).GetAwaiter().GetResult();
+            var mediaImporter = new MediaImportService(mediaLibraryDirectory, new ScoreImportService(), ffmpegPath);
+            _globalHotkeys = new WindowsGlobalHotkeyService();
+            _globalHotkeys.TogglePlaybackRequested += ToggleGlobalPlayback;
+            _globalHotkeys.StopRequested += StopGlobalPlayback;
             if (_scorePlaybackController.Targets.Any(target => target.Id == appSettings.General.DefaultPlaybackTargetId))
             {
-                _scorePlaybackController.SelectTargetAsync(appSettings.General.DefaultPlaybackTargetId)
-                    .AsTask().GetAwaiter().GetResult();
+                Task.Run(async () => await _scorePlaybackController.SelectTargetAsync(
+                        appSettings.General.DefaultPlaybackTargetId))
+                    .GetAwaiter().GetResult();
             }
             _mainViewModel = new MainWindowViewModel(
-                new DemoMusicCatalog(),
+                new EmptyMusicCatalog(),
                 _playbackController,
                 _coverImages,
                 _scorePlaybackController,
@@ -114,9 +131,13 @@ public sealed partial class App : Application
                 _appSettingsStore,
                 appSettings,
                 ffmpegService,
+                mediaLibraryStore,
+                mediaImporter,
+                new MidiVisualizationService(),
                 new CloudLyricsProvider(
                     _cloudClient,
-                    Path.Combine(appSettings.Storage.CacheDirectory ?? appData, "lyrics")));
+                    Path.Combine(appSettings.Storage.CacheDirectory ?? appData, "lyrics")),
+                Path.Combine(mediaLibraryDirectory, "lyrics"));
             desktop.MainWindow = desktop.Args?.Contains("--workbench", StringComparer.OrdinalIgnoreCase) == true
                 ? new WorkbenchWindow
                 {
@@ -129,15 +150,47 @@ public sealed partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 PersistLastTarget();
+                _globalHotkeys?.Dispose();
                 _mainViewModel.Dispose();
                 _playbackController.Dispose();
                 _coverImages.Dispose();
-                _scorePlaybackController.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                Task.Run(async () => await _scorePlaybackController.DisposeAsync()).GetAwaiter().GetResult();
                 _cloudClient.Dispose();
             };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async void ToggleGlobalPlayback()
+    {
+        if (_scorePlaybackController is null)
+            return;
+        try
+        {
+            if (_scorePlaybackController.Snapshot.Session.State == AutoPlayState.Playing)
+                await _scorePlaybackController.PauseAsync();
+            else if (_scorePlaybackController.Snapshot.ScoreTitle is not null)
+                await _scorePlaybackController.StartAsync();
+        }
+        catch
+        {
+            // 全局快捷键不能把后台线程异常传播到进程。
+        }
+    }
+
+    private async void StopGlobalPlayback()
+    {
+        if (_scorePlaybackController is null)
+            return;
+        try
+        {
+            await _scorePlaybackController.StopAsync();
+        }
+        catch
+        {
+            // 停止失败由播放快照和任务页面呈现。
+        }
     }
 
     // 退出前保存最近使用的播放目标和窗口句柄
@@ -150,7 +203,7 @@ public sealed partial class App : Application
 
         try
         {
-            var settings = _appSettingsStore.LoadAsync().AsTask().GetAwaiter().GetResult();
+            var settings = Task.Run(async () => await _appSettingsStore.LoadAsync()).GetAwaiter().GetResult();
             if (!settings.General.RememberLastTarget)
             {
                 return;
@@ -163,7 +216,7 @@ public sealed partial class App : Application
                     DefaultPlaybackTargetId = _scorePlaybackController.Snapshot.TargetId
                 }
             };
-            _appSettingsStore.SaveAsync(updated).AsTask().GetAwaiter().GetResult();
+            Task.Run(async () => await _appSettingsStore.SaveAsync(updated)).GetAwaiter().GetResult();
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {

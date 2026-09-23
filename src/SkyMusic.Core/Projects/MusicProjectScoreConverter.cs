@@ -10,8 +10,11 @@ public sealed class MusicProjectScoreConverter
     {
         MusicProjectValidator.Validate(project);
         var converter = new TickTimeConverter(project.Ppq, project.TempoMap);
+        var hasSolo = project.Tracks.Any(track => track.IsSolo);
         var notes = project.Tracks
-            .SelectMany((track, trackIndex) => track.Notes.Select(note => ToScoreNote(note, trackIndex, converter)))
+            .Select((track, trackIndex) => (track, trackIndex))
+            .Where(item => hasSolo ? item.track.IsSolo : !item.track.IsMuted)
+            .SelectMany(item => item.track.Notes.Select(note => ToScoreNote(note, item.trackIndex, item.track.Gain, converter)))
             .OrderBy(note => note.StartMicroseconds)
             .ThenBy(note => note.MidiNote)
             .ToArray();
@@ -53,11 +56,12 @@ public sealed class MusicProjectScoreConverter
         return project;
     }
 
-    private static ScoreNoteEvent ToScoreNote(ProjectNote note, int trackIndex, TickTimeConverter converter)
+    private static ScoreNoteEvent ToScoreNote(ProjectNote note, int trackIndex, float gain, TickTimeConverter converter)
     {
         var start = converter.TickToMicroseconds(note.StartTick);
         var end = converter.TickToMicroseconds(note.EndTick);
-        return new ScoreNoteEvent(note.MidiNote, start, Math.Max(1, end - start), note.Velocity, trackIndex, note.Channel);
+        var velocity = (byte)Math.Clamp((int)Math.Round(note.Velocity * gain), 1, 127);
+        return new ScoreNoteEvent(note.MidiNote, start, Math.Max(1, end - start), velocity, trackIndex, note.Channel);
     }
 
     private static ProjectNote ToProjectNote(ScoreNoteEvent note, TickTimeConverter converter)

@@ -33,4 +33,16 @@
     <Setter Property="FontSize" Value="{StaticResource SkyFontSizeCaption}" />
     <Setter Property="Foreground" Value="{StaticResource SkyBrushTextTertiary}" />
   </Style>
+
+  <Style Selector="TextBlock.sky-shell-title">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+
+  <Style Selector="TextBlock.sky-navigation-group">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextTertiary}" />
+  </Style>
 </Styles>

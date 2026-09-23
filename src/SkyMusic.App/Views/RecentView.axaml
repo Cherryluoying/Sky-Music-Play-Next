@@ -9,7 +9,13 @@
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="28,18,28,40">
         <TextBlock Text="按最近播放排序" Classes="sky-secondary" Margin="0,0,0,14" />
-        <ItemsControl ItemsSource="{Binding Playback.RecentTracks}">
+        <Grid ColumnDefinitions="36,50,*,130,52,40" Margin="0,0,0,8">
+          <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
+          <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
+          <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />
+          <TextBlock Grid.Column="4" Text="时长" Classes="sky-caption" HorizontalAlignment="Right" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Library.RecentTracks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="vm:TrackItemViewModel">
               <controls:TrackRow />

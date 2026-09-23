@@ -2,26 +2,33 @@
 using System.Collections.ObjectModel;
 using SkyMusic.Core.Mapping;
 using SkyMusic.Core.Services;
+using SkyMusic.Infrastructure.Input;
 
 namespace SkyMusic.App.ViewModels;
 
 public sealed class KeyMappingViewModel : ObservableObject
 {
     private readonly IKeyMappingStore _store;
+    private readonly Func<IReadOnlyList<KeyMappingDefinition>, Task>? _mappingsChanged;
     private KeyMappingProfileItemViewModel? _selectedProfile;
     private string _mappingName = "自定义映射";
     private string _processNames = "";
-    private string _statusText = "映射使用 Windows 扫描码，保存后重启应用生效";
+    private string _statusText = "映射使用 Windows 扫描码，保存后立即生效";
 
-    public KeyMappingViewModel(IKeyMappingStore store, IReadOnlyList<KeyMappingDefinition> initialMappings)
+    public KeyMappingViewModel(
+        IKeyMappingStore store,
+        IReadOnlyList<KeyMappingDefinition> initialMappings,
+        Func<IReadOnlyList<KeyMappingDefinition>, Task>? mappingsChanged = null)
     {
         _store = store;
+        _mappingsChanged = mappingsChanged;
         NewCommand = new RelayCommand(_ => NewMapping());
         AddEntryCommand = new RelayCommand(_ => AddEntry());
         RemoveEntryCommand = new RelayCommand(item => RemoveEntry(item as KeyMappingEntryViewModel));
-        SaveCommand = new AsyncRelayCommand(_ => SaveAsync(), _ => Entries.Count > 0, SetError);
-        DeleteCommand = new AsyncRelayCommand(_ => DeleteAsync(), _ => SelectedProfile is not null, SetError);
+        SaveCommand = new AsyncRelayCommand(_ => SaveAsync(), _ => Entries.Count > 0 && CanEditProfile, SetError);
+        DeleteCommand = new AsyncRelayCommand(_ => DeleteAsync(), _ => SelectedProfile is { CanEdit: true }, SetError);
         ReplaceProfiles(initialMappings);
+        SelectedProfile = Profiles.FirstOrDefault();
     }
 
     public ObservableCollection<KeyMappingProfileItemViewModel> Profiles { get; } = [];
@@ -52,7 +59,11 @@ public sealed class KeyMappingViewModel : ObservableObject
             {
                 LoadDefinition(value.Definition);
             }
+            OnPropertyChanged(nameof(CanEditProfile));
+            OnPropertyChanged(nameof(SelectedProfileDescription));
+            OnPropertyChanged(nameof(SelectedProcessNames));
             DeleteCommand.NotifyCanExecuteChanged();
+            SaveCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -73,6 +84,13 @@ public sealed class KeyMappingViewModel : ObservableObject
         get => _statusText;
         private set => SetProperty(ref _statusText, value);
     }
+
+    public bool CanEditProfile => SelectedProfile?.CanEdit != false;
+
+    public string SelectedProfileDescription => SelectedProfile?.Description
+        ?? "新建一个自定义方案，然后为每个 MIDI 音符填写 Windows 扫描码。";
+
+    public string SelectedProcessNames => SelectedProfile?.ProcessNames ?? string.Empty;
 
     private void NewMapping()
     {
@@ -118,7 +136,9 @@ public sealed class KeyMappingViewModel : ObservableObject
             ProcessNames.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         await _store.SaveAsync(definition);
         await ReloadAsync(id);
-        StatusText = "映射已保存，重启应用后会出现在演奏目标中";
+        if (_mappingsChanged is not null)
+            await _mappingsChanged(CustomDefinitions());
+        StatusText = "映射已保存，并已刷新演奏目标";
     }
 
     private async Task DeleteAsync()
@@ -129,8 +149,10 @@ public sealed class KeyMappingViewModel : ObservableObject
         }
         await _store.DeleteAsync(SelectedProfile.Definition.Id);
         await ReloadAsync(null);
+        if (_mappingsChanged is not null)
+            await _mappingsChanged(CustomDefinitions());
         NewMapping();
-        StatusText = "映射已删除";
+        StatusText = "映射已删除，并已刷新演奏目标";
     }
 
     // 重新加载全部方案并恢复选中项
@@ -144,11 +166,23 @@ public sealed class KeyMappingViewModel : ObservableObject
     private void ReplaceProfiles(IEnumerable<KeyMappingDefinition> mappings)
     {
         Profiles.Clear();
-        foreach (var mapping in mappings.OrderBy(mapping => mapping.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var mapping in DefaultKeyMappings.Create())
         {
             Profiles.Add(new KeyMappingProfileItemViewModel(mapping));
         }
+        foreach (var mapping in mappings.OrderBy(mapping => mapping.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            if (mapping.Id.StartsWith("builtin:", StringComparison.OrdinalIgnoreCase))
+                continue;
+            Profiles.Add(new KeyMappingProfileItemViewModel(mapping));
+        }
     }
+
+    private IReadOnlyList<KeyMappingDefinition> CustomDefinitions()
+        => Profiles
+            .Where(profile => !profile.IsBuiltIn)
+            .Select(profile => profile.Definition)
+            .ToArray();
 
     private void LoadDefinition(KeyMappingDefinition definition)
     {

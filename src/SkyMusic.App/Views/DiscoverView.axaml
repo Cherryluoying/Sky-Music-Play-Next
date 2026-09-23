@@ -4,20 +4,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:SkyMusic.App.Controls"
              xmlns:vm="using:SkyMusic.App.ViewModels">
-  <Grid RowDefinitions="56,*" ClipToBounds="True">
+  <Grid RowDefinitions="56,*" ClipToBounds="True" Background="#F1F5FA">
     <controls:SkyWindowHeader Title="发现音乐" ShowForward="True">
       <controls:SkyWindowHeader.TrailingContent>
-        <controls:SkySearchBox Text="{Binding SearchText}" Watermark="搜索歌曲、歌手或乐谱" />
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <controls:SkySearchBox Width="218" Text="{Binding SearchText}" Watermark="搜索歌曲、歌手或乐谱" />
+          <Border Width="30" Height="30" CornerRadius="8" ClipToBounds="True"
+                  Background="{StaticResource SkyBrushPlaceholder}">
+            <Image Source="avares://SkyMusic.App/Assets/logo.jpg" Stretch="UniformToFill" />
+          </Border>
+          <TextBlock Text="猫橘咪音乐" Classes="sky-secondary" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+        </StackPanel>
       </controls:SkyWindowHeader.TrailingContent>
     </controls:SkyWindowHeader>
 
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled" ClipToBounds="True">
-      <StackPanel Margin="24,10,18,52" MaxWidth="1180" HorizontalAlignment="Stretch">
-        <controls:SkyHeroBanner DataContext="{Binding BannerTrack}" Margin="0,0,0,24" />
+      <StackPanel Margin="28,18,28,64" MaxWidth="1240" HorizontalAlignment="Stretch" Spacing="0">
+        <controls:SkyHeroBanner DataContext="{Binding BannerTrack}" Margin="0,0,0,34" />
 
-        <controls:SkySectionHeader Title="推荐乐谱" Margin="0,0,0,12" />
-        <ItemsControl ItemsSource="{Binding RecommendedTracks}" Margin="0,0,0,24">
+        <controls:SkySectionHeader Title="推荐乐谱" Hint="适合今天的弹奏" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding RecommendedTracks}" Margin="0,0,0,30">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel Orientation="Horizontal" />
@@ -30,8 +38,8 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <controls:SkySectionHeader Title="热门乐谱" Margin="0,0,0,12" />
-        <ItemsControl ItemsSource="{Binding PopularTracks}" Margin="0,0,0,24">
+        <controls:SkySectionHeader Title="推荐音乐" Hint="旋律与谱面一起发现" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding PopularTracks}" Margin="0,0,0,30">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel Orientation="Horizontal" />
@@ -44,8 +52,8 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <controls:SkySectionHeader Title="最新上传" Margin="0,0,0,12" />
-        <ItemsControl ItemsSource="{Binding LatestTracks}" Margin="0,0,0,24">
+        <controls:SkySectionHeader Title="最近播放" Hint="从上次练习继续" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding Playback.RecentTracks}" Margin="0,0,0,30">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel Orientation="Horizontal" />
@@ -58,7 +66,21 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <controls:SkySectionHeader Title="探索分类" Margin="0,4,0,12" />
+        <controls:SkySectionHeader Title="最新上传" Hint="新谱面与新灵感" Margin="0,0,0,14" />
+        <ItemsControl ItemsSource="{Binding LatestTracks}" Margin="0,0,0,30">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TrackItemViewModel">
+              <controls:SkyMusicCard />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <controls:SkySectionHeader Title="探索分类" Hint="按乐器与玩法浏览" Margin="0,0,0,14" />
         <ItemsControl ItemsSource="{Binding Categories}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -67,14 +89,17 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="vm:CategoryItemViewModel">
-              <Border Width="148" Height="54" Margin="0,0,14,14" Padding="12,0"
+              <Border Width="172" Height="62" Margin="0,0,12,12" Padding="14,0"
                       CornerRadius="{StaticResource SkyCornerMedium}"
-                      Background="{StaticResource SkyBrushSurface}"
-                      BorderBrush="{StaticResource SkyBrushBorder}" BorderThickness="1">
-                <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" FontSize="15"
-                             Foreground="{StaticResource SkyBrushAccent}" />
-                  <TextBlock Text="{Binding Title}" Classes="sky-secondary" FontWeight="SemiBold" />
+                      Background="#E7F0FB">
+                <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+                  <Border Width="30" Height="30" CornerRadius="10" Background="#FFFFFF">
+                    <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" FontSize="15"
+                               Foreground="{StaticResource SkyBrushAccent}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <TextBlock Text="{Binding Title}" Classes="sky-secondary" FontWeight="SemiBold"
+                             VerticalAlignment="Center" />
                 </StackPanel>
               </Border>
             </DataTemplate>

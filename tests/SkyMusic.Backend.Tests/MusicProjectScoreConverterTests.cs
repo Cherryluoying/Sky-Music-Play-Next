@@ -44,6 +44,29 @@ public sealed class MusicProjectScoreConverterTests
         Assert.Equal([0L, 480L], project.Tracks.SelectMany(track => track.Notes).Select(note => note.StartTick).Order());
     }
 
+    [Fact]
+    public void RespectsSoloMuteAndTrackGainDuringPlaybackConversion()
+    {
+        var project = CreateProject();
+        var muted = project.Tracks[0] with { IsMuted = true };
+        var solo = muted with
+        {
+            Id = Guid.NewGuid(),
+            Name = "Solo",
+            IsMuted = false,
+            IsSolo = true,
+            Gain = 0.5f,
+            Notes = [new ProjectNote(Guid.NewGuid(), 0, 480, 72, 100)]
+        };
+        project = project with { Tracks = [muted, solo] };
+
+        var score = new MusicProjectScoreConverter().ToScore(project);
+
+        var note = Assert.Single(score.Notes);
+        Assert.Equal(72, note.MidiNote);
+        Assert.Equal(50, note.Velocity);
+    }
+
     private static MusicProject CreateProject()
     {
         var now = DateTimeOffset.UnixEpoch;

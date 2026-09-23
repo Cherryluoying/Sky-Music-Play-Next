@@ -6,33 +6,51 @@ namespace SkyMusic.App.ViewModels;
 
 public sealed class LyricLineViewModel(LyricLine line) : ObservableObject
 {
-    private bool _isCurrent;
+    private static readonly IBrush LyricBrush = new SolidColorBrush(Colors.White);
+    private int _distance = 4;
 
     public LyricLine Line { get; } = line;
 
     public string Text => Line.Text;
 
-    public double Opacity => IsCurrent ? 1 : 0.46;
+    public string TimestampText => Line.Timestamp.ToString(@"mm\:ss");
 
-    public double FontSize => IsCurrent ? 24 : 16;
+    public bool IsCurrent => Distance == 0;
 
-    public IBrush Foreground => IsCurrent
-        ? new SolidColorBrush(Color.Parse("#126DDA"))
-        : new SolidColorBrush(Color.Parse("#20304E"));
-
-    public bool IsCurrent
+    public double Opacity => Distance switch
     {
-        get => _isCurrent;
+        0 => 1,
+        1 => 0.64,
+        2 => 0.42,
+        _ => 0.24
+    };
+
+    public double FontSize => Distance switch
+    {
+        0 => 28,
+        1 => 19,
+        2 => 17,
+        _ => 16
+    };
+
+    public IBrush Foreground => LyricBrush;
+
+    public FontWeight LineFontWeight => IsCurrent ? FontWeight.Bold : FontWeight.SemiBold;
+
+    public int Distance
+    {
+        get => _distance;
         set
         {
-            if (!SetProperty(ref _isCurrent, value))
+            if (!SetProperty(ref _distance, Math.Max(0, value)))
             {
                 return;
             }
 
+            OnPropertyChanged(nameof(IsCurrent));
             OnPropertyChanged(nameof(Opacity));
             OnPropertyChanged(nameof(FontSize));
-            OnPropertyChanged(nameof(Foreground));
+            OnPropertyChanged(nameof(LineFontWeight));
         }
     }
 }

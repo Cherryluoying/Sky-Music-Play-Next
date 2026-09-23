@@ -5,26 +5,43 @@
   <Button Theme="{StaticResource SkyHeroBannerTheme}"
           Command="{Binding PlayCommand}" ToolTip.Tip="播放推荐">
     <Grid>
-      <Image Source="{Binding Cover}" Stretch="UniformToFill" Opacity="0.8" />
-      <Border Background="#700A1A31" />
-      <Grid Margin="28,22" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
-        <StackPanel Spacing="7" VerticalAlignment="Center" MaxWidth="460">
-          <TextBlock Text="今日推荐" Classes="sky-secondary" Foreground="#DCEEFF"
-                     FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Title}" FontSize="26" Foreground="White"
+      <Image Source="{Binding Cover}" Stretch="UniformToFill" Opacity="0.94" />
+      <Border>
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+            <GradientStop Offset="0" Color="#D90A1A31" />
+            <GradientStop Offset="0.52" Color="#A80B1D35" />
+            <GradientStop Offset="1" Color="#360B1A2C" />
+          </LinearGradientBrush>
+        </Border.Background>
+      </Border>
+      <Border Background="#250A1A31" />
+      <Grid Margin="32,28" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+        <StackPanel Spacing="8" VerticalAlignment="Center" MaxWidth="520">
+          <Border Background="#55FFFFFF" CornerRadius="10" Padding="10,4"
+                  HorizontalAlignment="Left">
+            <TextBlock Text="今日推荐 · 乐谱与音乐" Classes="sky-caption" Foreground="White"
+                       FontWeight="SemiBold" />
+          </Border>
+          <TextBlock Text="{Binding Title}" FontSize="30" Foreground="White"
                      FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-          <TextBlock Text="{Binding Artist}" Classes="sky-body" Foreground="#E3ECF7" />
-          <TextBlock Text="从一首乐谱开始今天的演奏" Classes="sky-secondary"
-                     Foreground="#D4DFED" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding Artist}" Classes="sky-body" Foreground="#F2F7FF" />
+            <TextBlock Text="{Binding Album}" Classes="sky-secondary" Foreground="#C9D7E8" />
+            <TextBlock Text="{Binding DurationText}" Classes="sky-secondary" Foreground="#C9D7E8" />
+          </StackPanel>
+          <TextBlock Text="从一首乐谱开始今天的演奏，边听边练，找到属于你的节拍。"
+                     Classes="sky-secondary" Foreground="#D4DFED" TextWrapping="Wrap" />
         </StackPanel>
-        <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22"
-                Background="White" VerticalAlignment="Center">
-          <TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="18"
-                     Foreground="{StaticResource SkyBrushAccent}"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Border Grid.Column="1" Width="52" Height="52" CornerRadius="26"
+                Background="White" VerticalAlignment="Center" BoxShadow="0 8 22 0 #55000000">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="19"
+                       Foreground="{StaticResource SkyBrushAccent}" />
+          </StackPanel>
         </Border>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6">
-          <Border Width="24" Height="3" CornerRadius="2" Background="White" />
+          <Border Width="28" Height="3" CornerRadius="2" Background="White" />
           <Border Width="8" Height="3" CornerRadius="2" Background="#80FFFFFF" />
           <Border Width="8" Height="3" CornerRadius="2" Background="#80FFFFFF" />
         </StackPanel>

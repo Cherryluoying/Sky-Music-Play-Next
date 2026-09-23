@@ -6,18 +6,25 @@ namespace SkyMusic.App.Services;
 
 public sealed class CoverImageService : IDisposable
 {
+    private const string DefaultCoverSource = "avares://SkyMusic.App/Assets/Default-Music.png";
     private readonly Dictionary<string, Bitmap?> _cache = [];
 
     public Bitmap? GetCover(string source)
     {
-        if (_cache.TryGetValue(source, out var cached))
+        var cacheKey = string.IsNullOrWhiteSpace(source) ? DefaultCoverSource : source;
+        if (_cache.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
 
-        // 统一处理资源和本地封面
-        var bitmap = TryLoad(source);
-        _cache[source] = bitmap;
+        // 统一处理资源和本地封面；缺失或损坏时使用应用默认封面。
+        var bitmap = TryLoad(cacheKey);
+        if (bitmap is null && !string.Equals(cacheKey, DefaultCoverSource, StringComparison.OrdinalIgnoreCase))
+        {
+            bitmap = TryLoad(DefaultCoverSource);
+        }
+
+        _cache[cacheKey] = bitmap;
         return bitmap;
     }
 

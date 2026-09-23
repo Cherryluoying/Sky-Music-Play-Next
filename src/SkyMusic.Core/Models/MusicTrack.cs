@@ -8,4 +8,8 @@ public sealed record MusicTrack(
     string Album,
     string CoverSource,
     TimeSpan Duration,
-    IReadOnlyList<LyricLine> Lyrics);
+    IReadOnlyList<LyricLine> Lyrics,
+    MediaKind Kind = MediaKind.Audio,
+    string? SourcePath = null,
+    string Author = "",
+    string? LyricsSourcePath = null);

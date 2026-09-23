@@ -58,11 +58,11 @@
     </ControlTheme>
 
     <ControlTheme x:Key="SkyMiniProgressRailTheme" TargetType="Slider">
-      <Setter Property="Height" Value="14" />
+      <Setter Property="Height" Value="12" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Grid Height="14">
-            <Track x:Name="PART_Track" Height="2" VerticalAlignment="Center"
+          <Grid Height="12">
+            <Track x:Name="PART_Track" Height="4" VerticalAlignment="Center"
                    Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
                    Value="{TemplateBinding Value}" Orientation="{TemplateBinding Orientation}">
               <Track.DecreaseButton>

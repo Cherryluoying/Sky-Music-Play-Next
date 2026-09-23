@@ -7,13 +7,15 @@
           Classes.selected="{Binding IsSelected, ElementName=Root}"
           Command="{Binding Command, ElementName=Root}"
           CommandParameter="{Binding CommandParameter, ElementName=Root}">
-    <Grid ColumnDefinitions="28,*">
+    <Grid ColumnDefinitions="27,*">
       <TextBlock Text="{Binding Glyph, ElementName=Root}"
-                 FontFamily="Segoe Fluent Icons" FontSize="15"
-                 Foreground="{StaticResource SkyBrushTextSecondary}"
+                 FontFamily="Segoe Fluent Icons" FontSize="16"
+                 Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
                  VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Text="{Binding Label, ElementName=Root}"
-                 Classes="sky-body" VerticalAlignment="Center" />
+                 FontSize="12" FontWeight="Medium"
+                 Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                 VerticalAlignment="Center" />
     </Grid>
   </Button>
 </UserControl>

@@ -3,23 +3,29 @@
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:SkyMusic.App.Views"
-        Title=""
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="56"
+        Title="猫橘咪音乐工作台"
+        Icon="avares://SkyMusic.App/Assets/logo_256x256.ico"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
         Width="1360" Height="820"
         MinWidth="1080" MinHeight="680"
         WindowStartupLocation="CenterOwner">
-  <Grid RowDefinitions="56,*" Background="{StaticResource ComposerBrushCanvas}">
-    <Grid Margin="18,5,218,0" ColumnDefinitions="Auto,24,Auto,*,Auto" ColumnSpacing="10"
-          Background="{StaticResource ComposerBrushCanvas}">
+  <Border Background="{StaticResource ComposerBrushCanvas}"
+          CornerRadius="12"
+          ClipToBounds="True">
+  <Grid RowDefinitions="56,*">
+    <Grid Margin="18,5,8,0" ColumnDefinitions="Auto,24,Auto,*,Auto,Auto" ColumnSpacing="10"
+          Background="{StaticResource ComposerBrushCanvas}"
+          PointerPressed="TitleBar_OnPointerPressed">
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-        <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource SkyBrushAccent}">
-          <TextBlock Text="&#xEC4F;" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="White"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Border Width="30" Height="30" CornerRadius="8" ClipToBounds="True"
+                Background="{StaticResource SkyBrushPlaceholder}">
+          <Image Source="avares://SkyMusic.App/Assets/logo.jpg" Stretch="UniformToFill" />
         </Border>
         <StackPanel VerticalAlignment="Center">
           <TextBlock Text="{Binding ProjectTitle}" Classes="composer-label" FontWeight="SemiBold" />
-          <TextBlock Text="SkyMusicPlay Workbench" Classes="composer-muted" Margin="0,2,0,0" />
+          <TextBlock Text="猫橘咪音乐工作台" Classes="composer-muted" Margin="0,2,0,0" />
         </StackPanel>
       </StackPanel>
 
@@ -45,12 +51,20 @@
         <Button Classes="composer-icon" Content="&#xEC4F;" Click="ExportMidi_OnClick"
                 ToolTip.Tip="导出 MIDI" />
       </StackPanel>
+      <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <Button Classes="composer-icon" Content="&#xE921;" Click="Minimize_OnClick" ToolTip.Tip="最小化" />
+        <Button Classes="composer-icon" Content="&#xE922;" Click="Maximize_OnClick" ToolTip.Tip="最大化/还原" />
+        <Button Classes="composer-icon window-close" Content="&#xE8BB;" Click="Close_OnClick" ToolTip.Tip="关闭" />
+      </StackPanel>
     </Grid>
 
     <Grid Grid.Row="1">
-      <views:GameComposerView x:Name="GameComposer" IsVisible="{Binding IsGameComposer}"
+      <views:GameComposerView x:Name="GameComposer"
+                              IsVisible="{Binding DataContext.IsGameComposer, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                               DataContext="{Binding Composer}" />
-      <views:ProfessionalWorkspaceView IsVisible="{Binding IsProfessional}" />
+      <views:ProfessionalDawView IsVisible="{Binding DataContext.IsProfessional, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                 DataContext="{Binding Professional}" />
     </Grid>
   </Grid>
+  </Border>
 </Window>

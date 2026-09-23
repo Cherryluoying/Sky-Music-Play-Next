@@ -4,23 +4,34 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Button Theme="{StaticResource SkyMusicCardTheme}"
           Command="{Binding PlayCommand}" ToolTip.Tip="播放">
-    <Grid RowDefinitions="172,*">
-      <Border CornerRadius="{StaticResource SkyCornerCard}"
+    <Grid RowDefinitions="190,*">
+      <Border CornerRadius="12"
               Background="{StaticResource SkyBrushPlaceholder}" ClipToBounds="True">
         <Grid>
           <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+          <Border IsHitTestVisible="False" IsVisible="{Binding IsPointerOver, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                  Width="42" Height="42" CornerRadius="21" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Background="#EFFFFFFF" BoxShadow="0 5 14 0 #44000000">
+            <TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="17"
+                       Foreground="{StaticResource SkyBrushAccent}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
           <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                  Margin="0,0,8,8" Padding="6,3" CornerRadius="{StaticResource SkyCornerSmall}"
+                  Margin="0,0,9,9" Padding="7,4" CornerRadius="6"
                   Background="#B319202B">
             <TextBlock Text="{Binding DurationText}" Classes="sky-caption" Foreground="White" />
           </Border>
         </Grid>
       </Border>
-      <StackPanel Grid.Row="1" Margin="6,9,6,0" Spacing="3">
+      <StackPanel Grid.Row="1" Margin="4,10,4,0" Spacing="4">
         <TextBlock Text="{Binding Title}" Classes="sky-card-title"
                    MaxLines="1" TextTrimming="CharacterEllipsis" />
-        <TextBlock Text="{Binding Artist}" Classes="sky-secondary" FontSize="11"
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding Artist}" Classes="sky-secondary" FontSize="11"
                    MaxLines="1" TextTrimming="CharacterEllipsis" />
+          <TextBlock Grid.Column="1" Text="{Binding Album}" Classes="sky-caption" MaxWidth="76"
+                     TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" />
+        </Grid>
       </StackPanel>
     </Grid>
   </Button>

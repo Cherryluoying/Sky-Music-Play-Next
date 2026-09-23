@@ -3,12 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <ControlTheme x:Key="SkyNavigationItemTheme" TargetType="Button">
-      <Setter Property="Height" Value="42" />
-      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="10,0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="{StaticResource SkyCornerMedium}" />
+      <Setter Property="CornerRadius" Value="7" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
       <Setter Property="Cursor" Value="Hand" />
@@ -18,13 +18,19 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
+            <Border.Transitions>
+              <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.14" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+              </Transitions>
+            </Border.Transitions>
             <Grid ColumnDefinitions="3,*">
-              <Border x:Name="SelectionIndicator" Width="3" Height="18"
+              <Border x:Name="SelectionIndicator" Width="3" Height="16"
                       CornerRadius="2" Background="{StaticResource SkyBrushAccent}"
                       Opacity="0" VerticalAlignment="Center" />
               <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
-                                Margin="9,0,0,0"
+                                Margin="8,0,0,0"
                                 HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalContentAlignment="Center" />
             </Grid>
@@ -32,10 +38,13 @@
         </ControlTemplate>
       </Setter>
       <Style Selector="^:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
+        <Setter Property="Background" Value="{StaticResource SkyBrushNavigationHover}" />
       </Style>
       <Style Selector="^.selected /template/ Border#Root">
         <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+      </Style>
+      <Style Selector="^.selected">
+        <Setter Property="Foreground" Value="{StaticResource SkyBrushAccent}" />
       </Style>
       <Style Selector="^.selected /template/ Border#SelectionIndicator">
         <Setter Property="Opacity" Value="1" />
@@ -48,4 +57,30 @@
       </Style>
     </ControlTheme>
   </Styles.Resources>
+
+  <Style Selector="Button.shell-caption">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{StaticResource SkyCornerSmall}" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextSecondary}" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.shell-caption:pointerover">
+    <Setter Property="Background" Value="{StaticResource SkyBrushNavigationHover}" />
+    <Setter Property="Foreground" Value="{StaticResource SkyBrushTextPrimary}" />
+  </Style>
+  <Style Selector="Button.shell-caption:pressed">
+    <Setter Property="Background" Value="{StaticResource SkyBrushAccentSoft}" />
+  </Style>
+  <Style Selector="Button.shell-caption.window-close:pointerover">
+    <Setter Property="Background" Value="#C94A55" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
 </Styles>

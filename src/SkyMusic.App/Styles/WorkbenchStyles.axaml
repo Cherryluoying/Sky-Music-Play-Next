@@ -46,6 +46,10 @@
     <Setter Property="Background" Value="{StaticResource ComposerBrushPanelHover}" />
     <Setter Property="Foreground" Value="{StaticResource ComposerBrushText}" />
   </Style>
+  <Style Selector="Button.composer-icon.window-close:pointerover">
+    <Setter Property="Background" Value="#B94A4A" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
   <Style Selector="ToggleButton.composer-icon:checked">
     <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
     <Setter Property="Foreground" Value="{StaticResource ComposerBrushAccent}" />
@@ -197,5 +201,145 @@
   <Style Selector="ListBox.instrument-card-list ListBoxItem:selected">
     <Setter Property="Background" Value="{StaticResource ComposerBrushAccentSoft}" />
     <Setter Property="BorderBrush" Value="{StaticResource ComposerBrushAccent}" />
+  </Style>
+
+  <Style Selector="TextBlock.daw-heading">
+    <Setter Property="Foreground" Value="#EEF3F5" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.daw-section-label">
+    <Setter Property="Foreground" Value="#DCE5E9" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.daw-muted">
+    <Setter Property="Foreground" Value="#91A0AA" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+  <Style Selector="TextBlock.daw-value">
+    <Setter Property="Foreground" Value="#C7D3D8" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="TextBlock.daw-track-name">
+    <Setter Property="Foreground" Value="#E8EEF1" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+
+  <Style Selector="Button.daw-tool, ToggleButton.daw-tool">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Foreground" Value="#AAB6BD" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.daw-tool:pointerover, ToggleButton.daw-tool:pointerover">
+    <Setter Property="Background" Value="#2C3943" />
+    <Setter Property="Foreground" Value="#F5F8F9" />
+  </Style>
+  <Style Selector="ToggleButton.daw-tool:checked">
+    <Setter Property="Background" Value="#355F6B" />
+    <Setter Property="Foreground" Value="#E9FBFF" />
+  </Style>
+  <Style Selector="Button.daw-tool.danger:pointerover">
+    <Setter Property="Background" Value="#5A302F" />
+    <Setter Property="Foreground" Value="#FFB7B1" />
+  </Style>
+
+  <Style Selector="Button.daw-play">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="#57B4BF" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="17" />
+    <Setter Property="Foreground" Value="#0F2226" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+  <Style Selector="Button.daw-play:pointerover">
+    <Setter Property="Background" Value="#75CAD3" />
+  </Style>
+
+  <Style Selector="Border.daw-display">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Background" Value="#0C1217" />
+    <Setter Property="BorderBrush" Value="#3B4851" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.daw-display-text">
+    <Setter Property="Foreground" Value="#B9E4D3" />
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.daw-command">
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Background" Value="#26333C" />
+    <Setter Property="BorderBrush" Value="#46545E" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Foreground" Value="#DEE6EA" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+  <Style Selector="Button.daw-command:pointerover">
+    <Setter Property="Background" Value="#33434E" />
+    <Setter Property="BorderBrush" Value="#68B8C0" />
+  </Style>
+  <Style Selector="Button.daw-command.danger:pointerover">
+    <Setter Property="Background" Value="#5A302F" />
+    <Setter Property="BorderBrush" Value="#B85D58" />
+  </Style>
+
+  <Style Selector="ListBox.daw-track-list">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.daw-track-list ListBoxItem">
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="#2C3740" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="ListBox.daw-track-list ListBoxItem:pointerover">
+    <Setter Property="Background" Value="#202B33" />
+  </Style>
+  <Style Selector="ListBox.daw-track-list ListBoxItem:selected">
+    <Setter Property="Background" Value="#293B45" />
+  </Style>
+
+  <Style Selector="ToggleButton.daw-mix">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="#222D35" />
+    <Setter Property="BorderBrush" Value="#46525B" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Foreground" Value="#9EABB2" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.daw-mix:checked">
+    <Setter Property="Background" Value="#B48336" />
+    <Setter Property="BorderBrush" Value="#E3BA63" />
+    <Setter Property="Foreground" Value="#17130D" />
   </Style>
 </Styles>

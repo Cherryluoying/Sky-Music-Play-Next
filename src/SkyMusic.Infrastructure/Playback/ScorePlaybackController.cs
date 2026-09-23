@@ -1,5 +1,6 @@
 // 模块：SkyMusic.Infrastructure 播放领域 ScorePlaybackController
 using SkyMusic.Core.Importing;
+using SkyMusic.Core.Mapping;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Playback;
 using SkyMusic.Core.Services;
@@ -13,7 +14,7 @@ public sealed class ScorePlaybackController : IScorePlaybackController
     private readonly IScoreTimelineCompiler _compiler;
     private readonly ITimelineScheduler _scheduler;
     private readonly IGameWindowService _windowService;
-    private readonly IReadOnlyDictionary<string, PlaybackTargetRegistration> _registrations;
+    private Dictionary<string, PlaybackTargetRegistration> _registrations;
     private readonly PlaybackEventMonitor? _monitor;
 
     private IPlaybackEventSink _sink;
@@ -54,7 +55,7 @@ public sealed class ScorePlaybackController : IScorePlaybackController
         _session = CreateSession(_sink);
     }
 
-    public IReadOnlyList<PlaybackTarget> Targets { get; }
+    public IReadOnlyList<PlaybackTarget> Targets { get; private set; }
 
     public IReadOnlyList<GameWindowInfo> Windows => _windows;
 
@@ -259,6 +260,54 @@ public sealed class ScorePlaybackController : IScorePlaybackController
                 await ActivateTargetAsync(cancellationToken).ConfigureAwait(false);
                 await _session.StartAsync(cancellationToken).ConfigureAwait(false);
             }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        Publish();
+    }
+
+    // 保存自定义键位后原地重建播放目标，保留当前乐谱和播放位置
+    public async ValueTask ReloadCustomKeyMappingsAsync(
+        IReadOnlyList<KeyMappingDefinition> mappings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mappings);
+        ThrowIfDisposed();
+        var registrations = DefaultPlaybackTargets.Create(mappings)
+            .ToDictionary(item => item.Target.Id, StringComparer.OrdinalIgnoreCase);
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var oldSession = _session;
+            var oldSink = _sink;
+            var oldSnapshot = oldSession.Snapshot;
+            await oldSession.StopAsync(cancellationToken).ConfigureAwait(false);
+
+            _registrations = registrations;
+            Targets = registrations.Values.Select(item => item.Target).ToArray();
+            if (!registrations.ContainsKey(_targetId))
+                _targetId = registrations.ContainsKey("sky-15") ? "sky-15" : registrations.Keys.First();
+
+            var nextRegistration = registrations[_targetId];
+            var nextSink = CreateSink(nextRegistration);
+            var nextSession = CreateSession(nextSink);
+            if (_timeline is not null)
+            {
+                await nextSession.LoadAsync(_timeline, cancellationToken).ConfigureAwait(false);
+                if (oldSnapshot.PositionMicroseconds > 0)
+                    await nextSession.SeekAsync(oldSnapshot.PositionMicroseconds, cancellationToken).ConfigureAwait(false);
+            }
+
+            _sink = nextSink;
+            _session = nextSession;
+            SelectPreferredWindow(nextRegistration.Target);
+            oldSession.Changed -= OnSessionChanged;
+            await oldSession.DisposeAsync().ConfigureAwait(false);
+            (oldSink as IDisposable)?.Dispose();
         }
         finally
         {
