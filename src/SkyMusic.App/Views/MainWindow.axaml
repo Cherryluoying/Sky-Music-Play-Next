@@ -153,7 +153,7 @@
           <controls:SkySearchBox x:Name="GlobalSearchBox" Width="320"
                                  Text="{Binding GlobalSearchText}"
                                  Watermark="搜索全部歌曲、MIDI 和乐谱" />
-          <Popup IsOpen="{Binding IsGlobalSearchOpen}" Placement="Bottom"
+          <Popup IsOpen="{Binding IsGlobalSearchOpen, Mode=TwoWay}" IsLightDismissEnabled="True" Placement="Bottom"
                  PlacementTarget="{Binding #GlobalSearchBox}" VerticalOffset="6">
             <Border Width="360" MaxHeight="420" Padding="10" CornerRadius="10"
                     Background="{StaticResource SkyBrushSurface}" BoxShadow="{StaticResource SkyElevationLow}">

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include "sequence.h"
 
 namespace skymusic
 {
@@ -15,6 +16,9 @@ struct Request
     std::optional<int> note;
     std::optional<int> velocity;
     std::optional<int> channel;
+    std::vector<SequenceEvent> events;
+    bool playing {};
+    std::int64_t position {};
 };
 
 struct Response

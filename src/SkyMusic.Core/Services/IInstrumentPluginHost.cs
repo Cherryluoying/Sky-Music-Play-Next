@@ -20,4 +20,8 @@ public interface IInstrumentPluginHost : IAsyncDisposable
     ValueTask NoteOffAsync(int note, byte velocity = 0, int channel = 0, CancellationToken cancellationToken = default);
 
     ValueTask AllNotesOffAsync(CancellationToken cancellationToken = default);
+
+    // 打开当前 VST3 的原生编辑器窗口；不支持图形编辑器时返回 false。
+    ValueTask<bool> OpenEditorAsync(CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(false);
 }

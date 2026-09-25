@@ -1,0 +1,134 @@
+<!-- 模块：悬浮演奏入口；猫爪球与唯一气泡共用一个透明窗口，内部切页不弹出子窗口。 -->
+<Window x:Class="SkyMusic.App.Views.FloatingPlayerWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="64" Height="64" CanResize="False" ShowInTaskbar="False" ShowActivated="False"
+        WindowDecorations="None" TransparencyLevelHint="Transparent" Background="Transparent"
+        Topmost="True" RequestedThemeVariant="Dark" WindowStartupLocation="Manual" Title="猫橘咪音乐 · 悬浮演奏">
+  <Window.Resources>
+    <ControlTheme x:Key="FloatingIcon" TargetType="Button">
+      <Setter Property="Width" Value="38" /><Setter Property="Height" Value="38" />
+      <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="18" /><Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="IconSurface" CornerRadius="10" Background="{TemplateBinding Background}">
+            <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontFamily="Segoe Fluent Icons"
+                       FontSize="{TemplateBinding FontSize}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#IconSurface"><Setter Property="Background" Value="#26FFFFFF" /></Style>
+      <Style Selector="^.selected /template/ Border#IconSurface"><Setter Property="Background" Value="#38FFFFFF" /></Style>
+      <Style Selector="^:pressed /template/ Border#IconSurface"><Setter Property="Background" Value="#50FFFFFF" /></Style>
+      <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35" /></Style>
+    </ControlTheme>
+    <ControlTheme x:Key="FloatingTrack" TargetType="Button">
+      <Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="TrackSurface" Padding="8" CornerRadius="10" Background="Transparent">
+            <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#TrackSurface"><Setter Property="Background" Value="#1CFFFFFF" /></Style>
+      <Style Selector="^:pressed /template/ Border#TrackSurface"><Setter Property="Background" Value="#32FFFFFF" /></Style>
+    </ControlTheme>
+  </Window.Resources>
+  <Grid x:Name="FloatingRoot">
+    <Border x:Name="Bubble" IsVisible="False" Width="352" Height="412" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="14"
+            CornerRadius="20" Background="#F51D222D" BorderBrush="#32FFFFFF" BorderThickness="1">
+      <Grid RowDefinitions="42,Auto,*,Auto,64" RowSpacing="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Button x:Name="PlaylistTab" Theme="{StaticResource FloatingIcon}" Content="&#xE8D6;" Tag="playlist"
+                    Classes.selected="{Binding IsPlaylist}" Click="Section_OnClick" ToolTip.Tip="本地歌单" AutomationProperties.Name="本地歌单" />
+            <Button x:Name="FavoritesTab" Theme="{StaticResource FloatingIcon}" Content="&#xEB51;" Tag="favorites"
+                    Classes.selected="{Binding IsFavorites}" Click="Section_OnClick" ToolTip.Tip="我喜欢的" AutomationProperties.Name="我喜欢的" />
+            <Button x:Name="SearchTab" Theme="{StaticResource FloatingIcon}" Content="&#xE721;" Tag="search"
+                    Classes.selected="{Binding IsSearch}" Click="Section_OnClick" ToolTip.Tip="搜索全部歌曲（先暂停键盘演奏）" AutomationProperties.Name="搜索" />
+            <Button x:Name="TimingTab" Theme="{StaticResource FloatingIcon}" Content="&#xE713;" Tag="settings"
+                    Classes.selected="{Binding IsSettings}" Click="Section_OnClick" ToolTip.Tip="演奏间隔与延迟" AutomationProperties.Name="演奏设置" />
+          </StackPanel>
+          <Button Grid.Column="1" x:Name="CollapseButton" Theme="{StaticResource FloatingIcon}" Content="&#xE70D;"
+                  Click="Collapse_OnClick" ToolTip.Tip="收起" AutomationProperties.Name="收起" />
+        </Grid>
+        <TextBox x:Name="SearchBox" Grid.Row="1" IsVisible="{Binding IsSearch}" Text="{Binding SearchText, Mode=TwoWay}"
+                 PointerPressed="SearchBox_OnPointerPressed"
+                 PlaceholderText="搜索歌名、歌手或作者" Foreground="White" CaretBrush="White"
+                 Background="#22FFFFFF" BorderBrush="#40FFFFFF" CornerRadius="9" MinHeight="36" />
+        <Grid Grid.Row="2">
+          <ScrollViewer IsVisible="{Binding ShowsTracks}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+            <ItemsControl x:Name="TrackList" ItemsSource="{Binding Tracks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Theme="{StaticResource FloatingTrack}" Click="Track_OnClick" ToolTip.Tip="{Binding Title}">
+                    <Grid ColumnDefinitions="38,*,22" ColumnSpacing="10">
+                      <Border Width="38" Height="38" CornerRadius="8" ClipToBounds="True" Background="#30FFFFFF">
+                        <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Artist}" Foreground="#ADFFFFFF" FontSize="11" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="&#xE768;" FontFamily="Segoe Fluent Icons" Foreground="White" VerticalAlignment="Center" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <TextBlock IsVisible="{Binding IsEmpty}" Text="暂无歌曲" Foreground="#ADFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <TextBlock IsVisible="{Binding IsLoading}" Text="正在读取…" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <!-- 通过图标和数值调整，说明放在悬停提示，避免小面板变成文字工具栏。 -->
+          <StackPanel IsVisible="{Binding IsSettings}" VerticalAlignment="Center" Spacing="22">
+            <Grid ColumnDefinitions="38,*,38,38" ColumnSpacing="6" IsEnabled="{Binding Playback.IsScore}">
+              <TextBlock Text="&#xE916;" FontFamily="Segoe Fluent Icons" Foreground="White" FontSize="22"
+                         VerticalAlignment="Center" HorizontalAlignment="Center" ToolTip.Tip="音符间隔调整" />
+              <TextBlock Grid.Column="1" Text="{Binding Playback.IntervalAdjustmentText}" Foreground="White" FontSize="20"
+                         VerticalAlignment="Center" ToolTip.Tip="相对于乐谱原始间隔的调整量（毫秒）" />
+              <Button Grid.Column="2" Theme="{StaticResource FloatingIcon}" Content="&#xE738;"
+                      Command="{Binding Playback.AdjustIntervalCommand}" CommandParameter="-10" ToolTip.Tip="间隔 −10 毫秒" />
+              <Button Grid.Column="3" Theme="{StaticResource FloatingIcon}" Content="&#xE710;"
+                      Command="{Binding Playback.AdjustIntervalCommand}" CommandParameter="10" ToolTip.Tip="间隔 +10 毫秒" />
+            </Grid>
+            <Grid ColumnDefinitions="38,*,38,38" ColumnSpacing="6" IsEnabled="{Binding Playback.IsScore}">
+              <TextBlock Text="&#xE917;" FontFamily="Segoe Fluent Icons" Foreground="White" FontSize="22"
+                         VerticalAlignment="Center" HorizontalAlignment="Center" ToolTip.Tip="按键释放延迟" />
+              <TextBlock Grid.Column="1" Text="{Binding Playback.KeyReleaseDelayText}" Foreground="White" FontSize="20"
+                         VerticalAlignment="Center" ToolTip.Tip="按键释放延迟调整量（毫秒）" />
+              <Button Grid.Column="2" Theme="{StaticResource FloatingIcon}" Content="&#xE738;"
+                      Command="{Binding Playback.AdjustReleaseDelayCommand}" CommandParameter="-10" ToolTip.Tip="延迟 −10 毫秒" />
+              <Button Grid.Column="3" Theme="{StaticResource FloatingIcon}" Content="&#xE710;"
+                      Command="{Binding Playback.AdjustReleaseDelayCommand}" CommandParameter="10" ToolTip.Tip="延迟 +10 毫秒" />
+            </Grid>
+            <TextBlock Text="仅作用于 TXT / JSON 乐谱演奏" Foreground="#ADFFFFFF" FontSize="11" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+        <StackPanel Grid.Row="3" Spacing="3">
+          <TextBlock Text="{Binding Error}" Foreground="#FFD3A5" FontSize="11" TextWrapping="Wrap" MaxLines="2" />
+          <TextBlock Text="{Binding Playback.PlaybackError}" Foreground="#FFD3A5" FontSize="11" TextWrapping="Wrap" MaxLines="2" />
+        </StackPanel>
+        <Grid Grid.Row="4" RowDefinitions="20,*">
+          <TextBlock Text="{Binding Playback.CurrentItem.Title, FallbackValue=尚未选择歌曲}" Foreground="#C9FFFFFF"
+                     TextAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" />
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+            <Button x:Name="PreviousButton" Theme="{StaticResource FloatingIcon}" Content="&#xE892;"
+                    Click="Transport_OnClick" Tag="previous" ToolTip.Tip="上一首" AutomationProperties.Name="上一首" />
+            <Button x:Name="PlayButton" Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.PlayGlyph}"
+                    Background="#25FFFFFF" Click="Transport_OnClick" Tag="play" ToolTip.Tip="播放 / 暂停" AutomationProperties.Name="播放或暂停" />
+            <Button x:Name="NextButton" Theme="{StaticResource FloatingIcon}" Content="&#xE893;"
+                    Click="Transport_OnClick" Tag="next" ToolTip.Tip="下一首" AutomationProperties.Name="下一首" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+    <Border x:Name="FloatingBall" Width="64" Height="64" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Transparent"
+            Cursor="Hand" PointerPressed="Ball_OnPointerPressed" PointerMoved="Ball_OnPointerMoved"
+            PointerReleased="Ball_OnPointerReleased" PointerCaptureLost="Ball_OnPointerCaptureLost"
+            ToolTip.Tip="单击打开演奏控制 · 拖动移动" AutomationProperties.Name="悬浮演奏球">
+      <Image Source="avares://SkyMusic.App/Assets/floating-window.png" Stretch="Uniform" />
+    </Border>
+  </Grid>
+</Window>

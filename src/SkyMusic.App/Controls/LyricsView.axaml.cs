@@ -1,5 +1,7 @@
-// 模块：SkyMusic.App 自定义控件 LyricsView.axaml
+// 模块：歌词居中跟随。手动浏览临时暂停跟随，逐句滚动使用与帧率无关的缓出动画。
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -12,150 +14,132 @@ namespace SkyMusic.App.Controls;
 
 public sealed partial class LyricsView : UserControl
 {
-    private readonly ListBox? _lyricsList;
-    private readonly DispatcherTimer _scrollTimer;
-    private readonly DispatcherTimer _resumeFollowTimer;
+    private readonly ItemsControl _items;
+    private readonly ScrollViewer _scroll;
+    private readonly Border _padding;
+    private readonly DispatcherTimer _scrollTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private readonly DispatcherTimer _resumeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private readonly Stopwatch _animation = new();
     private PlaybackViewModel? _viewModel;
-    private ScrollViewer? _scrollViewer;
+    private bool _attached;
+    private int _centerRequest;
+    private double _startOffset;
     private double _targetOffset;
 
     public LyricsView()
     {
         InitializeComponent();
-        _lyricsList = this.FindControl<ListBox>("LyricsList");
-        _scrollTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(16)
-        };
+        _items = this.FindControl<ItemsControl>("LyricsItems")!;
+        _scroll = this.FindControl<ScrollViewer>("LyricsScroll")!;
+        _padding = this.FindControl<Border>("LyricsPadding")!;
         _scrollTimer.Tick += OnScrollTimerTick;
-        _resumeFollowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-        _resumeFollowTimer.Tick += ResumeFollow_OnTick;
-        DataContextChanged += OnDataContextChanged;
+        _resumeTimer.Tick += (_, _) => ResumeFollow();
+        // 在隧道路由中暂停跟随，避免 ScrollViewer 处理滚轮后继续自动居中。
+        _scroll.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel, handledEventsToo: true);
+        DataContextChanged += (_, _) => BindViewModel();
     }
 
-    private void OnDataContextChanged(object? sender, EventArgs e)
+    private void BindViewModel()
     {
-        _scrollTimer.Stop();
-        _scrollViewer = null;
-
         if (_viewModel is not null)
         {
-            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel.PropertyChanged -= OnPlaybackChanged;
+            _viewModel.Lyrics.CollectionChanged -= OnLyricsChanged;
         }
-
-        _viewModel = DataContext as PlaybackViewModel;
-        if (_viewModel is not null)
-        {
-            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        }
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(PlaybackViewModel.CurrentLyricIndex) ||
-            _viewModel is null ||
-            _lyricsList is null ||
-            _viewModel.CurrentLyricIndex < 0)
-        {
-            return;
-        }
-
-        var index = _viewModel.CurrentLyricIndex;
-        if (_resumeFollowTimer.IsEnabled)
-        {
-            return;
-        }
-        Dispatcher.UIThread.Post(() => CenterCurrentLine(index), DispatcherPriority.Background);
-    }
-
-    // 用户滚动时暂时停止自动追踪，三秒后平滑回到当前歌词。
-    private void LyricsList_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
-    {
         _scrollTimer.Stop();
-        _resumeFollowTimer.Stop();
-        _resumeFollowTimer.Start();
+        _resumeTimer.Stop();
+        _centerRequest++;
+        _viewModel = _attached ? DataContext as PlaybackViewModel : null;
+        if (_viewModel is null) return;
+        _viewModel.PropertyChanged += OnPlaybackChanged;
+        _viewModel.Lyrics.CollectionChanged += OnLyricsChanged;
+        QueueCenter();
     }
 
-    private void ResumeFollow_OnTick(object? sender, EventArgs e)
+    private void OnPlaybackChanged(object? sender, PropertyChangedEventArgs e)
     {
-        _resumeFollowTimer.Stop();
-        if (_viewModel?.CurrentLyricIndex >= 0)
-        {
-            CenterCurrentLine(_viewModel.CurrentLyricIndex);
-        }
+        if (e.PropertyName is nameof(PlaybackViewModel.CurrentLyricIndex) or nameof(PlaybackViewModel.CurrentItem))
+            QueueCenter();
     }
 
+    private void OnLyricsChanged(object? sender, NotifyCollectionChangedEventArgs e) => QueueCenter();
+
+    // 两端各预留半个可视区，第一句、最后一句也使用同一居中规则。
+    private void LyricsScroll_OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_padding is null) return;
+        var half = Math.Max(0, e.NewSize.Height / 2);
+        _padding.Padding = new Thickness(0, half, 0, half);
+        QueueCenter();
+    }
+
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        _centerRequest++;
+        _scrollTimer.Stop();
+        _resumeTimer.Stop();
+        _resumeTimer.Start();
+    }
+
+    private void LyricsScroll_OnPointerExited(object? sender, PointerEventArgs e) => ResumeFollow();
+
+    private void ResumeFollow()
+    {
+        _resumeTimer.Stop();
+        QueueCenter();
+    }
+
+    // 点击整句或右侧时间戳都跳转，并恢复当前句的居中跟随。
     private void Timeline_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control { DataContext: LyricLineViewModel line } || _viewModel is null)
-        {
-            return;
-        }
-
-        _resumeFollowTimer.Stop();
+        if (sender is not Control { DataContext: LyricLineViewModel line } || _viewModel is null) return;
+        _resumeTimer.Stop();
         _viewModel.SeekToLyric(line);
-        CenterCurrentLine(_viewModel.Lyrics.IndexOf(line));
+        QueueCenter(_viewModel.Lyrics.IndexOf(line));
         e.Handled = true;
     }
 
-    private void CenterCurrentLine(int index)
+    private void QueueCenter(int? requestedIndex = null)
     {
-        if (_lyricsList is null)
-        {
-            return;
-        }
-
-        var scrollViewer = _lyricsList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-        var previousOffset = scrollViewer?.Offset.Y ?? 0;
-        _lyricsList.ScrollIntoView(index);
-
-        // 使用真实歌词项高度计算居中位置
+        if (!_attached || _resumeTimer.IsEnabled) return;
+        var request = ++_centerRequest;
+        // 等布局和绑定提交后读取真实高度，不用上一帧位置计算目标。
         Dispatcher.UIThread.Post(() =>
         {
-            var container = _lyricsList.ContainerFromIndex(index) as Control;
-            scrollViewer ??= _lyricsList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-            if (container is null || scrollViewer is null)
-            {
-                return;
-            }
-
-            var point = container.TranslatePoint(default, scrollViewer);
-            if (point is null)
-            {
-                return;
-            }
-
-            var target = scrollViewer.Offset.Y + point.Value.Y -
-                         ((scrollViewer.Viewport.Height - container.Bounds.Height) / 2);
-            var maximum = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
-            _targetOffset = Math.Clamp(target, 0, maximum);
-            _scrollViewer = scrollViewer;
-
-            // ScrollIntoView 仅用于生成虚拟化容器，随后恢复位置并平滑过渡。
-            var restoredOffset = Math.Clamp(previousOffset, 0, maximum);
-            scrollViewer.Offset = new Vector(scrollViewer.Offset.X, restoredOffset);
+            if (request != _centerRequest || !_attached || _resumeTimer.IsEnabled || _viewModel is null) return;
+            var index = requestedIndex ?? Math.Max(0, _viewModel.CurrentLyricIndex);
+            _items.UpdateLayout();
+            if (_items.ContainerFromIndex(index) is not Control container || _scroll.Viewport.Height <= 0) return;
+            var point = container.TranslatePoint(default, _items);
+            if (point is null) return;
+            var center = _padding.Padding.Top + point.Value.Y + container.Bounds.Height / 2;
+            _startOffset = _scroll.Offset.Y;
+            _targetOffset = Math.Clamp(center - _scroll.Viewport.Height / 2, 0,
+                Math.Max(0, _scroll.Extent.Height - _scroll.Viewport.Height));
+            _animation.Restart();
             _scrollTimer.Start();
-        }, DispatcherPriority.Background);
+        }, DispatcherPriority.Loaded);
     }
 
     private void OnScrollTimerTick(object? sender, EventArgs e)
     {
-        if (_scrollViewer is null)
-        {
-            _scrollTimer.Stop();
-            return;
-        }
+        var progress = Math.Clamp(_animation.Elapsed.TotalMilliseconds / 440, 0, 1);
+        var eased = 1 - Math.Pow(1 - progress, 3);
+        _scroll.Offset = new Vector(0, _startOffset + (_targetOffset - _startOffset) * eased);
+        if (progress >= 1) _scrollTimer.Stop();
+    }
 
-        var current = _scrollViewer.Offset.Y;
-        var delta = _targetOffset - current;
-        if (Math.Abs(delta) < 0.5)
-        {
-            _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, _targetOffset);
-            _scrollTimer.Stop();
-            return;
-        }
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _attached = true;
+        BindViewModel();
+    }
 
-        var next = current + (delta * 0.18);
-        _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, next);
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _attached = false;
+        BindViewModel();
+        base.OnDetachedFromVisualTree(e);
     }
 }

@@ -13,6 +13,8 @@ public sealed class SettingsViewModel : ObservableObject
     private AppSettings _settings;
     private string _defaultPlaybackTargetId;
     private bool _rememberLastTarget;
+    private bool _floatingWindowEnabled;
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private string _ffmpegPath;
     private string _pianoTransPath;
     private string _vst3SearchPaths;
@@ -22,6 +24,8 @@ public sealed class SettingsViewModel : ObservableObject
     private string _cloudServiceUrl;
     private int _networkTimeoutSeconds;
     private string _cacheDirectory;
+    private string _scoreLibraryDirectory;
+    private string _midiLibraryDirectory;
     private string _ffmpegStatus;
     private string _statusText = "设置会保存到当前 Windows 用户目录";
 
@@ -36,6 +40,7 @@ public sealed class SettingsViewModel : ObservableObject
         _ffmpeg = ffmpeg;
         _defaultPlaybackTargetId = settings.General.DefaultPlaybackTargetId;
         _rememberLastTarget = settings.General.RememberLastTarget;
+        _floatingWindowEnabled = settings.General.FloatingWindowEnabled;
         _ffmpegPath = settings.ExternalTools.FfmpegPath ?? string.Empty;
         _pianoTransPath = settings.ExternalTools.PianoTransPath ?? string.Empty;
         _vst3SearchPaths = string.Join(Environment.NewLine, settings.AudioPlugins.Vst3SearchPaths);
@@ -44,6 +49,8 @@ public sealed class SettingsViewModel : ObservableObject
         _cloudServiceUrl = settings.Network.CloudServiceUrl;
         _networkTimeoutSeconds = settings.Network.TimeoutSeconds;
         _cacheDirectory = settings.Storage.CacheDirectory ?? string.Empty;
+        _scoreLibraryDirectory = settings.Storage.ScoreLibraryDirectory ?? MediaLibraryDirectories.Score(new StorageSettings());
+        _midiLibraryDirectory = settings.Storage.MidiLibraryDirectory ?? MediaLibraryDirectories.Midi(new StorageSettings());
 
         PerformanceModes =
         [
@@ -64,6 +71,33 @@ public sealed class SettingsViewModel : ObservableObject
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand DetectFfmpegCommand { get; }
     public RelayCommand OpenKeyMappingCommand { get; }
+
+    public bool FloatingWindowEnabled
+    {
+        get => _floatingWindowEnabled;
+        set
+        {
+            if (SetProperty(ref _floatingWindowEnabled, value)) _ = SaveFloatingPreferenceAsync();
+        }
+    }
+
+    // 开关立即生效且单独持久化，不顺带保存其他尚未提交的设置。
+    private async Task SaveFloatingPreferenceAsync()
+    {
+        await _saveGate.WaitAsync();
+        try
+        {
+            var current = await _store.LoadAsync();
+            await _store.SaveAsync(current with
+            {
+                General = current.General with { FloatingWindowEnabled = FloatingWindowEnabled }
+            });
+        }
+        catch (Exception exception) { SetError(exception); }
+        finally { _saveGate.Release(); }
+    }
+
+    public void ReportLinkError() => StatusText = "无法打开浏览器，请访问 https://github.com/Cherryluoying/Sky-Music-Play-Next";
 
     public string DefaultPlaybackTargetId
     {
@@ -131,6 +165,25 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _cacheDirectory, value);
     }
 
+    public string ScoreLibraryDirectory
+    {
+        get => _scoreLibraryDirectory;
+        set => SetProperty(ref _scoreLibraryDirectory, value);
+    }
+
+    public string MidiLibraryDirectory
+    {
+        get => _midiLibraryDirectory;
+        set => SetProperty(ref _midiLibraryDirectory, value);
+    }
+
+    public void ReportDirectoryError(string message) => StatusText = $"目录操作失败：{message}";
+
+    // 打开目录使用界面当前值；未填时解析为默认分类目录。
+    public string GetLibraryDirectory(bool midi) => midi
+        ? MediaLibraryDirectories.Midi(new StorageSettings { MidiLibraryDirectory = MidiLibraryDirectory })
+        : MediaLibraryDirectories.Score(new StorageSettings { ScoreLibraryDirectory = ScoreLibraryDirectory });
+
     public string FfmpegStatus
     {
         get => _ffmpegStatus;
@@ -171,13 +224,18 @@ public sealed class SettingsViewModel : ObservableObject
             .Split(['\r', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var scoreDirectory = GetLibraryDirectory(false);
+        var midiDirectory = GetLibraryDirectory(true);
+        Directory.CreateDirectory(scoreDirectory);
+        Directory.CreateDirectory(midiDirectory);
         _settings = new AppSettings
         {
             SchemaVersion = _settings.SchemaVersion,
             General = new GeneralSettings
             {
                 DefaultPlaybackTargetId = string.IsNullOrWhiteSpace(DefaultPlaybackTargetId) ? "sky-15" : DefaultPlaybackTargetId.Trim(),
-                RememberLastTarget = RememberLastTarget
+                RememberLastTarget = RememberLastTarget,
+                FloatingWindowEnabled = FloatingWindowEnabled
             },
             ExternalTools = new ExternalToolSettings
             {
@@ -201,12 +259,22 @@ public sealed class SettingsViewModel : ObservableObject
             },
             Storage = new StorageSettings
             {
-                CacheDirectory = NullIfWhiteSpace(CacheDirectory)
+                CacheDirectory = NullIfWhiteSpace(CacheDirectory),
+                ScoreLibraryDirectory = scoreDirectory,
+                MidiLibraryDirectory = midiDirectory
             }
         };
 
-        await _store.SaveAsync(_settings);
-        StatusText = "设置已保存，外部工具和网络配置将在下次启动时完全生效";
+        await _saveGate.WaitAsync();
+        try
+        {
+            _settings = _settings with { General = _settings.General with { FloatingWindowEnabled = FloatingWindowEnabled } };
+            await _store.SaveAsync(_settings);
+        }
+        finally { _saveGate.Release(); }
+        ScoreLibraryDirectory = scoreDirectory;
+        MidiLibraryDirectory = midiDirectory;
+        StatusText = "设置已保存，曲谱 / MIDI 目录立即用于后续导入；外部工具和网络配置下次启动生效";
     }
 
     private void SetError(Exception exception) => StatusText = exception.Message;

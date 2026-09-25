@@ -177,6 +177,27 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
         await transaction.CommitAsync(cancellationToken);
     }
 
+    // 后台补读标签只更新展示元数据，不覆盖并发写入的喜欢、历史、歌词或歌单关系。
+    public async Task UpdateMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE tracks SET title = $title, artist = $artist, author = $author,
+                album = $album, cover_source = $cover, duration_ticks = $duration
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", track.Id);
+        command.Parameters.AddWithValue("$title", track.Title);
+        command.Parameters.AddWithValue("$artist", track.Artist);
+        command.Parameters.AddWithValue("$author", track.Author);
+        command.Parameters.AddWithValue("$album", track.Album);
+        command.Parameters.AddWithValue("$cover", track.CoverSource);
+        command.Parameters.AddWithValue("$duration", track.Duration.Ticks);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task SetFavoriteAsync(
         string trackId,
         bool isFavorite,

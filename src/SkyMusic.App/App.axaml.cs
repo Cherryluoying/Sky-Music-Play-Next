@@ -33,6 +33,7 @@ public sealed partial class App : Application
     private IKeyMappingStore? _keyMappingStore;
     private IAppSettingsStore? _appSettingsStore;
     private WindowsGlobalHotkeyService? _globalHotkeys;
+    private int _cleanupStarted;
 
     public override void Initialize()
         => AvaloniaXamlLoader.Load(this);
@@ -95,7 +96,9 @@ public sealed partial class App : Application
                 windowService,
                 DefaultPlaybackTargets.Create(keyMappings),
                 monitor: playbackMonitor);
-            _playbackController = new UnifiedPlaybackController(_scorePlaybackController, ffmpegPath);
+            var instrumentHost = new Vst3ProcessHost(new Vst3ProcessHostOptions(Path.Combine(
+                AppContext.BaseDirectory, "SkyMusic.VstHost.exe")));
+            _playbackController = new UnifiedPlaybackController(_scorePlaybackController, ffmpegPath, instrumentHost);
             var mediaLibraryDirectory = Path.Combine(appData, "Library");
             foreach (var directoryName in new[] { "music", "midi", "musicscore", "lyrics" })
             {
@@ -103,7 +106,7 @@ public sealed partial class App : Application
             }
             var mediaLibraryStore = new SqliteMediaLibraryStore(Path.Combine(mediaLibraryDirectory, "library.db"));
             Task.Run(() => mediaLibraryStore.InitializeAsync()).GetAwaiter().GetResult();
-            var mediaImporter = new MediaImportService(mediaLibraryDirectory, new ScoreImportService(), ffmpegPath);
+            var mediaImporter = new MediaImportService(mediaLibraryDirectory, new ScoreImportService(), ffmpegPath, _appSettingsStore);
             _globalHotkeys = new WindowsGlobalHotkeyService();
             _globalHotkeys.TogglePlaybackRequested += ToggleGlobalPlayback;
             _globalHotkeys.StopRequested += StopGlobalPlayback;
@@ -125,9 +128,7 @@ public sealed partial class App : Application
                 new JsonMacroScriptImporter(),
                 new MacroPlaybackSession(new WindowsMacroInputSink()),
                 windowService,
-                new Vst3ProcessHost(new Vst3ProcessHostOptions(Path.Combine(
-                    AppContext.BaseDirectory,
-                    "SkyMusic.VstHost.exe"))),
+                instrumentHost,
                 _appSettingsStore,
                 appSettings,
                 ffmpegService,
@@ -147,19 +148,46 @@ public sealed partial class App : Application
                 {
                     DataContext = _mainViewModel
                 };
-            desktop.Exit += (_, _) =>
-            {
-                PersistLastTarget();
-                _globalHotkeys?.Dispose();
-                _mainViewModel.Dispose();
-                _playbackController.Dispose();
-                _coverImages.Dispose();
-                Task.Run(async () => await _scorePlaybackController.DisposeAsync()).GetAwaiter().GetResult();
-                _cloudClient.Dispose();
-            };
+            desktop.Exit += (_, _) => CleanupResources();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // 退出时逐项隔离释放，某个原生扩展失败也不能阻断其他线程和播放器退出。
+    private void CleanupResources()
+    {
+        if (Interlocked.Exchange(ref _cleanupStarted, 1) != 0)
+        {
+            return;
+        }
+
+        TryCleanup(PersistLastTarget);
+        TryCleanup(() => _globalHotkeys?.Dispose());
+        TryCleanup(() => _mainViewModel?.Dispose(), TimeSpan.FromSeconds(3));
+        TryCleanup(() => _playbackController?.Dispose(), TimeSpan.FromSeconds(3));
+        TryCleanup(() => _coverImages?.Dispose());
+        TryCleanup(() => _scorePlaybackController?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(3)));
+        TryCleanup(() => _cloudClient?.Dispose());
+    }
+
+    private static void TryCleanup(Action cleanup, TimeSpan? timeout = null)
+    {
+        try
+        {
+            if (timeout is null)
+            {
+                cleanup();
+                return;
+            }
+
+            // 原生 MIDI/VST3 释放偶尔会等待驱动返回，退出时限制单项等待时间。
+            Task.Run(cleanup).Wait(timeout.Value);
+        }
+        catch
+        {
+            // 退出路径不让单个原生模块异常阻断剩余清理。
+        }
     }
 
     private async void ToggleGlobalPlayback()

@@ -4,10 +4,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkyMusic.Core.Plugins;
 using SkyMusic.Core.Services;
+using SkyMusic.Infrastructure.Scores;
 
 namespace SkyMusic.Infrastructure.Plugins;
 
-public sealed class Vst3ProcessHost : IInstrumentPluginHost
+public sealed class Vst3ProcessHost : IInstrumentPluginHost, IMidiSequenceHost
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -88,6 +89,28 @@ public sealed class Vst3ProcessHost : IInstrumentPluginHost
     {
         EnsurePluginLoaded();
         await SendAsync(new HostRequest(NextId(), "allNotesOff"), cancellationToken);
+    }
+
+    public async ValueTask<bool> OpenEditorAsync(CancellationToken cancellationToken = default)
+    {
+        EnsurePluginLoaded();
+        await SendAsync(new HostRequest(NextId(), "openEditor"), cancellationToken);
+        return true;
+    }
+
+    // 整条时间线一次送入隔离宿主，发声不再依赖 UI 刷新或逐音符 IPC 往返。
+    public async ValueTask LoadSequenceAsync(string path, CancellationToken cancellationToken = default)
+    {
+        EnsurePluginLoaded();
+        var sequence = await Task.Run(() => MidiSequenceReader.Read(path, cancellationToken), cancellationToken);
+        await SendAsync(new HostRequest(NextId(), "sequence", Events: sequence.Events), cancellationToken);
+    }
+
+    public ValueTask SetTransportAsync(bool playing, TimeSpan? position = null, CancellationToken cancellationToken = default)
+    {
+        EnsurePluginLoaded();
+        return SendAsync(new HostRequest(NextId(), "transport", Playing: playing,
+            Position: position?.Ticks / 10 ?? 0), cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -305,7 +328,10 @@ public sealed class Vst3ProcessHost : IInstrumentPluginHost
         string? Path = null,
         int? Note = null,
         byte? Velocity = null,
-        int? Channel = null);
+        int? Channel = null,
+        IReadOnlyList<MidiSequenceEvent>? Events = null,
+        bool? Playing = null,
+        long? Position = null);
 
     private sealed record HostResponse(long Id, bool Ok, string? Name = null, string? Error = null);
 }

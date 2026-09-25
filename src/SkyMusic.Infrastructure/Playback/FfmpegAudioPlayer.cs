@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using SkyMusic.Infrastructure.Media;
 using PlaybackState = SkyMusic.Core.Playback.PlaybackState;
 
@@ -21,6 +22,22 @@ internal sealed class FfmpegAudioPlayer : IDisposable
     private TimeSpan _duration;
     private PlaybackState _state = PlaybackState.Stopped;
     private bool _disposed;
+    private float _volume = 1;
+    private VolumeSampleProvider? _gain;
+
+    // 增益作用于送往声卡的 PCM，切歌、暂停和定位后也保持用户设定。
+    public double Volume
+    {
+        get { lock (_gate) return _volume; }
+        set
+        {
+            lock (_gate)
+            {
+                _volume = (float)(double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 1);
+                if (_gain is not null) _gain.Volume = _volume;
+            }
+        }
+    }
 
     public FfmpegAudioPlayer(string ffmpegPath)
     {
@@ -209,7 +226,7 @@ internal sealed class FfmpegAudioPlayer : IDisposable
             ReadFully = true
         };
         var output = new WaveOutEvent { DesiredLatency = 120, NumberOfBuffers = 3 };
-        output.Init(buffer);
+        output.Init(CreateVolumeProvider(buffer));
         var cancellation = new CancellationTokenSource();
         _decoder = process;
         _output = output;
@@ -219,6 +236,16 @@ internal sealed class FfmpegAudioPlayer : IDisposable
         output.Play();
         _clock.Restart();
         _state = PlaybackState.Playing;
+    }
+
+    // 输出设备前统一施加软件增益；保留独立入口便于直接验证 PCM，不依赖本机声卡。
+    internal ISampleProvider CreateVolumeProvider(IWaveProvider source)
+    {
+        lock (_gate)
+        {
+            _gain = new VolumeSampleProvider(source.ToSampleProvider()) { Volume = _volume };
+            return _gain;
+        }
     }
 
     // 解码线程限制预读量，让 FFmpeg 与声卡消费速度保持同步。
@@ -273,6 +300,7 @@ internal sealed class FfmpegAudioPlayer : IDisposable
         }
         _output?.Dispose();
         _output = null;
+        _gain = null;
         if (_decoder is not null)
         {
             try

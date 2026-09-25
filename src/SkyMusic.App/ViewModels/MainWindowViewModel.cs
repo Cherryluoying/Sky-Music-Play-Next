@@ -61,7 +61,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             mediaLibraryStore,
             scorePlaybackController,
             midiVisualization,
-            localLyricsDirectory);
+            localLyricsDirectory,
+            instrumentPluginHost,
+            appSettings.AudioPlugins.Vst3SearchPaths);
         _tasks = new TasksViewModel(scorePlaybackController);
         _midiStudio = new MidiStudioViewModel(
             new MidiInputCapture(),
@@ -80,6 +82,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             appSettings,
             ffmpegService,
             () => NavigateTo(AppPage.KeyMapping, true));
+        Settings = settings;
 
         var discover = new DiscoverViewModel(catalog, coverImages, Playback, mediaLibraryStore);
         _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback);
@@ -160,6 +163,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public PlaybackViewModel Playback { get; }
 
+    public SettingsViewModel Settings { get; }
+
+    // 每次开启悬浮窗创建轻量视图状态，播放引擎和曲库仍由主窗口统一持有。
+    public FloatingPlayerViewModel CreateFloatingPlayer()
+        => new(_mediaLibraryStore, _coverImages, Playback);
+
     public ObservableCollection<TrackItemViewModel> GlobalSearchResults { get; } = [];
 
     public string GlobalSearchText
@@ -177,7 +186,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsGlobalSearchOpen
     {
         get => _isGlobalSearchOpen;
-        private set => SetProperty(ref _isGlobalSearchOpen, value);
+        set
+        {
+            if (SetProperty(ref _isGlobalSearchOpen, value) && !value)
+                _searchRequest?.Cancel();
+        }
     }
 
     public RelayCommand NavigateCommand { get; }
@@ -301,6 +314,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                 .ToArray();
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
             {
+                // 收起或改词后，旧查询结果不能重新打开弹层。
+                if (cancellationToken.IsCancellationRequested) return;
                 GlobalSearchResults.Clear();
                 foreach (var record in filtered)
                 {
@@ -328,11 +343,13 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         Playback.OpenPlayerRequested -= OnOpenPlayerRequested;
         _searchRequest?.Cancel();
         _searchRequest?.Dispose();
+        _searchRequest = null;
         _tasks.Dispose();
-        _midiStudio.Dispose();
+        // 先停止播放器向 VST 主机发送 MIDI 音符，再释放工作台共用的插件主机。
         _transcription.Dispose();
         _macroRunner.Dispose();
         _library.Dispose();
         Playback.Dispose();
+        _midiStudio.Dispose();
     }
 }

@@ -20,5 +20,7 @@ public interface IMediaLibraryStore
 
     Task SetFavoriteAsync(string trackId, bool isFavorite, CancellationToken cancellationToken = default);
 
+    Task UpdateMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default);
+
     Task RecordPlayedAsync(string trackId, CancellationToken cancellationToken = default);
 }

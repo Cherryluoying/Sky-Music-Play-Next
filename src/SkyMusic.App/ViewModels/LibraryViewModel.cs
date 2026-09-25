@@ -13,6 +13,9 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     private readonly CoverImageService _covers;
     private readonly PlaybackViewModel _playback;
     private readonly List<StoredMediaTrack> _records = [];
+    private readonly HashSet<string> _metadataChecked = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
     private string _searchText = string.Empty;
     private bool _isLoading;
     private string? _statusText;
@@ -73,6 +76,7 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
             {
                 var track = await _importer.ImportAsync(path);
                 await _store.UpsertAsync(track);
+                _metadataChecked.Add(track.Id);
                 imported++;
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
@@ -90,12 +94,38 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
 
     public async Task RefreshAsync()
     {
-        IsLoading = true;
-        await _store.InitializeAsync();
-        _records.Clear();
-        _records.AddRange(await _store.GetPlaylistAsync());
-        ApplyFilter();
-        IsLoading = false;
+        var entered = false;
+        try
+        {
+            await _refreshGate.WaitAsync(_lifetime.Token);
+            entered = true;
+            IsLoading = true;
+            await _store.InitializeAsync(_lifetime.Token);
+            _records.Clear();
+            _records.AddRange(await _store.GetPlaylistAsync(cancellationToken: _lifetime.Token));
+            ApplyFilter();
+            // 先展示已有曲库，再异步补读旧版本缺失的标签；本次启动每首只扫描一次。
+            foreach (var record in await _store.GetAllAsync(_lifetime.Token))
+            {
+                if (record.Track.Kind != MediaKind.Audio || _metadataChecked.Contains(record.Track.Id)) continue;
+                var updated = await _importer.RefreshMetadataAsync(record.Track, _lifetime.Token);
+                if (updated != record.Track) await _store.UpdateMetadataAsync(updated, _lifetime.Token);
+                _metadataChecked.Add(record.Track.Id);
+            }
+            // 重读数据库，以免补读期间用户刚修改的收藏或歌词被旧快照覆盖。
+            _records.Clear();
+            _records.AddRange(await _store.GetPlaylistAsync(cancellationToken: _lifetime.Token));
+            ApplyFilter();
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            StatusText = $"曲库信息更新失败：{exception.Message}";
+        }
+        finally
+        {
+            if (entered) { IsLoading = false; _refreshGate.Release(); }
+        }
     }
 
     private void ApplyFilter()
@@ -123,7 +153,8 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
         item => _playback.PlayTrack(item),
         item => _ = ToggleFavoriteAsync(item),
         record.IsFavorite,
-        index);
+        index,
+        item => _playback.PlayNext(item));
 
     private async Task ToggleFavoriteAsync(TrackItemViewModel item)
     {
@@ -157,5 +188,9 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     private void OnMediaLibraryChanged(object? sender, EventArgs e) =>
         Avalonia.Threading.Dispatcher.UIThread.Post(async () => await RefreshAsync());
 
-    public void Dispose() => _playback.MediaLibraryChanged -= OnMediaLibraryChanged;
+    public void Dispose()
+    {
+        _playback.MediaLibraryChanged -= OnMediaLibraryChanged;
+        _lifetime.Cancel();
+    }
 }

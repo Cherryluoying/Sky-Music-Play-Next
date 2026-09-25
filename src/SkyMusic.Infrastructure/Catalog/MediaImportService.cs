@@ -2,14 +2,17 @@
 using System.Security.Cryptography;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Services;
+using SkyMusic.Core.Settings;
 using SkyMusic.Infrastructure.Media;
+using SkyMusic.Infrastructure.Scores;
 
 namespace SkyMusic.Infrastructure.Catalog;
 
 public sealed class MediaImportService(
     string libraryDirectory,
     IScoreImportService scoreImporter,
-    string? ffmpegPath = null) : IMediaImportService
+    string? ffmpegPath = null,
+    IAppSettingsStore? settingsStore = null) : IMediaImportService
 {
     private static readonly HashSet<string> AudioExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".flac", ".m4a", ".aac", ".wma", ".ogg" };
@@ -45,7 +48,15 @@ public sealed class MediaImportService(
             _ => "musicscore"
         };
         var id = await ComputeHashAsync(fullSourcePath, cancellationToken);
-        var targetDirectory = Path.Combine(_libraryDirectory, folderName);
+        // 每次导入读取已保存的分类目录，设置立即生效；数据库中的已有文件路径不变。
+        var storage = settingsStore is null || kind == MediaKind.Audio
+            ? new StorageSettings() : (await settingsStore.LoadAsync(cancellationToken)).Storage;
+        var targetDirectory = kind switch
+        {
+            MediaKind.Score => MediaLibraryDirectories.Score(storage, _libraryDirectory),
+            MediaKind.Midi => MediaLibraryDirectories.Midi(storage, _libraryDirectory),
+            _ => Path.Combine(_libraryDirectory, folderName)
+        };
         Directory.CreateDirectory(targetDirectory);
         var targetPath = Path.Combine(targetDirectory, $"{id}{extension}");
         if (!File.Exists(targetPath))
@@ -58,9 +69,15 @@ public sealed class MediaImportService(
         var title = Path.GetFileNameWithoutExtension(fullSourcePath);
         var author = string.Empty;
         var duration = TimeSpan.Zero;
-        if (kind is MediaKind.Score or MediaKind.Midi)
+        if (kind == MediaKind.Midi)
         {
-            var result = await _scoreImporter.ImportAsync(targetPath, cancellationToken);
+            // 存储文件名可以是内容哈希，界面标题始终保留用户导入时的文件名。
+            // EOT 和速度图给出完整时长，包含尾部休止与非钢琴通道。
+            duration = (await Task.Run(() => MidiSequenceReader.Read(targetPath, cancellationToken), cancellationToken)).Duration;
+        }
+        else if (kind == MediaKind.Score)
+        {
+            var result = await _scoreImporter.ImportAsync(fullSourcePath, cancellationToken);
             if (!result.IsSuccess || result.Score is null)
             {
                 throw new InvalidDataException(string.Join(" · ", result.Issues.Select(issue => issue.Message)));
@@ -69,12 +86,7 @@ public sealed class MediaImportService(
             author = result.Score.Composer;
             duration = TimeSpan.FromTicks(result.Score.DurationMicroseconds * 10);
         }
-        else
-        {
-            duration = FfmpegMediaDurationProbe.Probe(ffmpegPath, targetPath);
-        }
-
-        return new MusicTrack(
+        var track = new MusicTrack(
             id,
             title,
             string.IsNullOrWhiteSpace(author) ? "本地音乐" : author,
@@ -90,6 +102,24 @@ public sealed class MediaImportService(
             kind,
             targetPath,
             author);
+        return await RefreshMetadataAsync(track, cancellationToken).ConfigureAwait(false);
+    }
+
+    // 新导入与旧曲库共用标签路径；没有标签时保留原文件标题和默认封面。
+    public async ValueTask<MusicTrack> RefreshMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default)
+    {
+        if (track.Kind != MediaKind.Audio || string.IsNullOrWhiteSpace(track.SourcePath)) return track;
+        var metadata = await AudioMetadataReader.ReadAsync(ffmpegPath, track.SourcePath,
+            Path.Combine(_libraryDirectory, "covers"), cancellationToken).ConfigureAwait(false);
+        return track with
+        {
+            Title = metadata.Title ?? track.Title,
+            Artist = metadata.Artist ?? track.Artist,
+            Album = metadata.Album ?? track.Album,
+            Author = metadata.Author ?? track.Author,
+            CoverSource = metadata.CoverPath ?? track.CoverSource,
+            Duration = metadata.Duration > TimeSpan.Zero ? metadata.Duration : track.Duration
+        };
     }
 
     private static async Task<string> ComputeHashAsync(string path, CancellationToken cancellationToken)

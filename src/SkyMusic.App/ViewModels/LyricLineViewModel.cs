@@ -11,7 +11,7 @@ public sealed class LyricLineViewModel(LyricLine line) : ObservableObject
 
     public LyricLine Line { get; } = line;
 
-    public string Text => Line.Text;
+    public string Text => string.IsNullOrWhiteSpace(Line.Text) ? "♪" : Line.Text;
 
     public string TimestampText => Line.Timestamp.ToString(@"mm\:ss");
 
@@ -20,22 +20,23 @@ public sealed class LyricLineViewModel(LyricLine line) : ObservableObject
     public double Opacity => Distance switch
     {
         0 => 1,
-        1 => 0.64,
-        2 => 0.42,
-        _ => 0.24
+        1 => 0.58,
+        2 => 0.45,
+        _ => 0.38
     };
 
-    public double FontSize => Distance switch
+    // 字号和字重不参与逐句动画，以视觉缩放强调当前句，避免测量宽度改变挤动封面列。
+    public double FontSize => 28;
+
+    public double VisualScale => Distance switch
     {
-        0 => 28,
-        1 => 19,
-        2 => 17,
-        _ => 16
+        0 => 1,
+        _ => 1 / 1.16
     };
 
     public IBrush Foreground => LyricBrush;
 
-    public FontWeight LineFontWeight => IsCurrent ? FontWeight.Bold : FontWeight.SemiBold;
+    public FontWeight LineFontWeight => FontWeight.SemiBold;
 
     public int Distance
     {
@@ -49,8 +50,7 @@ public sealed class LyricLineViewModel(LyricLine line) : ObservableObject
 
             OnPropertyChanged(nameof(IsCurrent));
             OnPropertyChanged(nameof(Opacity));
-            OnPropertyChanged(nameof(FontSize));
-            OnPropertyChanged(nameof(LineFontWeight));
+            OnPropertyChanged(nameof(VisualScale));
         }
     }
 }

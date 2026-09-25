@@ -51,6 +51,43 @@ public sealed class SqliteMediaLibraryStoreTests
     }
 
     [Fact]
+    public async Task MetadataBackfillPreservesPlaylistFavoritesHistoryAndNewLyrics()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"skymusic-metadata-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var store = new SqliteMediaLibraryStore(Path.Combine(directory, "library.db"));
+            await store.InitializeAsync();
+            var old = new MusicTrack("song-id", "文件名", "本地音乐", "本地音频", "default.png",
+                TimeSpan.Zero, [], MediaKind.Audio, "song.flac", LyricsSourcePath: "old.lrc");
+            await store.UpsertAsync(old, "my-playlist");
+            await store.SetFavoriteAsync(old.Id, true);
+            await store.RecordPlayedAsync(old.Id);
+            await store.UpsertAsync(old with { LyricsSourcePath = "new.lrc" }, null);
+            await store.UpdateMetadataAsync(old with
+            {
+                Title = "歌曲标题", Artist = "歌手", Album = "专辑", Author = "作曲者",
+                CoverSource = "cover.jpg", Duration = TimeSpan.FromSeconds(200)
+            });
+            var updated = Assert.Single(await store.GetPlaylistAsync("my-playlist"));
+            Assert.True(updated.IsFavorite);
+            Assert.Equal(1, updated.PlayCount);
+            Assert.NotNull(updated.LastPlayedAt);
+            Assert.Equal("new.lrc", updated.Track.LyricsSourcePath);
+            Assert.Equal("歌曲标题", updated.Track.Title);
+            Assert.Equal("歌手", updated.Track.Artist);
+            Assert.Equal("专辑", updated.Track.Album);
+            Assert.Equal("作曲者", updated.Track.Author);
+            Assert.Equal("cover.jpg", updated.Track.CoverSource);
+            Assert.Equal(TimeSpan.FromSeconds(200), updated.Track.Duration);
+            Assert.Empty(await store.GetPlaylistAsync());
+            Assert.Single(await store.GetAllAsync());
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public async Task Initialize_UpgradesExistingDatabaseWithLyricsColumn()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"skymusic-library-upgrade-{Guid.NewGuid():N}");

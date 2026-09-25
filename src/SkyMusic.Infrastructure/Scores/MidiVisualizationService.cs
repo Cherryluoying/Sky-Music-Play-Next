@@ -11,8 +11,15 @@ public sealed class MidiVisualizationService : IMidiVisualizationService
         string filePath,
         CancellationToken cancellationToken = default)
     {
-        var result = await new MidiScoreImporter().ImportAsync(
-            File.OpenRead(filePath),
+        // MIDI 解码是 CPU/文件工作，不能在 UI 线程执行同步 ImportAsync 实现。
+        return await Task.Run(async () => await ReadNotesAsync(filePath, cancellationToken), cancellationToken);
+    }
+
+    private static async Task<IReadOnlyList<MidiVisualNote>> ReadNotesAsync(string filePath, CancellationToken cancellationToken)
+    {
+        await using var source = File.OpenRead(filePath);
+        var result = await new MidiScoreImporter(new MidiImportOptions(0, 127, false)).ImportAsync(
+            source,
             Path.GetFileName(filePath),
             cancellationToken);
         if (!result.IsSuccess || result.Score is null)

@@ -1,9 +1,10 @@
-<!-- 模块：SkyMusic.App 页面视图 DesktopLyricsWindow -->
+<!-- 模块：透明单句桌面歌词；悬停才显示气泡控制，外观设置不影响主播放器。 -->
 <Window x:Class="SkyMusic.App.Views.DesktopLyricsWindow"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="720"
-        Height="112"
+        xmlns:controls="using:SkyMusic.App.Controls"
+        Width="900"
+        Height="156"
         MinWidth="420"
         MaxWidth="1000"
         CanResize="False"
@@ -12,32 +13,161 @@
         TransparencyLevelHint="Transparent"
         Background="Transparent"
         Topmost="True"
-        WindowStartupLocation="Manual">
-  <Border Margin="12" Padding="22,12,12,12"
-          Background="#EEF6F8FB"
-          BorderBrush="#99DDE3EA"
-          BorderThickness="1"
-          CornerRadius="{StaticResource SkyCornerPlayer}"
-          BoxShadow="{StaticResource SkyElevationPlayer}"
-          PointerPressed="Surface_OnPointerPressed">
-    <Grid ColumnDefinitions="*,36">
-      <StackPanel VerticalAlignment="Center" Spacing="5">
-        <TextBlock Text="{Binding CurrentDesktopLyric}"
-                   Foreground="{StaticResource SkyBrushAccent}"
-                   FontSize="22"
-                   FontWeight="SemiBold"
-                   TextAlignment="Center"
-                   TextTrimming="CharacterEllipsis" />
-        <TextBlock Text="{Binding NextDesktopLyric}"
-                   Foreground="{StaticResource SkyBrushTextSecondary}"
-                   FontSize="12"
-                   TextAlignment="Center"
-                   Opacity="0.72"
-                   TextTrimming="CharacterEllipsis" />
-      </StackPanel>
-      <Button Grid.Column="1" Theme="{StaticResource SkyIconButtonTheme}"
-              Width="30" Height="30" VerticalAlignment="Top"
-              Content="&#xE711;" Click="Close_OnClick" ToolTip.Tip="关闭桌面歌词" />
-    </Grid>
-  </Border>
+        WindowStartupLocation="Manual" Title="猫橘咪音乐 · 桌面歌词">
+  <Window.Resources>
+    <ControlTheme x:Key="DesktopBubble" TargetType="Button">
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Background" Value="#EC202631" />
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Bubble" Background="{TemplateBinding Background}" CornerRadius="18"
+                  BorderBrush="#40FFFFFF" BorderThickness="1">
+            <!-- 显式指定图标颜色，避免全局 TextBlock 样式把深色气泡中的图标覆盖成黑色。 -->
+            <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                       FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Bubble">
+        <Setter Property="Background" Value="#FF414C60" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Bubble">
+        <Setter Property="Background" Value="#FF5C4930" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#Bubble">
+        <Setter Property="BorderBrush" Value="#FFCB70" />
+      </Style>
+      <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+    </ControlTheme>
+  </Window.Resources>
+  <Window.Styles>
+    <!-- 官方调色盘主题仅加载到桌面歌词窗口，不改变其他页面。 -->
+    <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+    <Style Selector="FlyoutPresenter.desktop-popover">
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+  </Window.Styles>
+  <Grid x:Name="DesktopSurface" RowDefinitions="*,48" Background="Transparent" Margin="10,4,10,10"
+        PointerEntered="Surface_OnPointerEntered" PointerExited="Surface_OnPointerExited"
+        PointerPressed="Surface_OnPointerPressed">
+    <!-- 控制区预留固定高度，显示/隐藏不挤动歌词；控件不跟随歌词透明度。 -->
+    <StackPanel x:Name="HoverControls" Grid.Row="1" Orientation="Horizontal" Spacing="8" Opacity="0"
+                IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel.Transitions>
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" /></Transitions>
+      </StackPanel.Transitions>
+      <Button x:Name="PreviousButton" Theme="{StaticResource DesktopBubble}" Content="&#xE892;"
+              Command="{Binding PreviousCommand}" ToolTip.Tip="上一首" AutomationProperties.Name="上一首" />
+      <Button x:Name="PlayButton" Theme="{StaticResource DesktopBubble}" Content="{Binding PlayGlyph}"
+              Command="{Binding TogglePlayCommand}" ToolTip.Tip="播放 / 暂停" AutomationProperties.Name="播放或暂停" />
+      <Button x:Name="NextButton" Theme="{StaticResource DesktopBubble}" Content="&#xE893;"
+              Command="{Binding NextCommand}" ToolTip.Tip="下一首" AutomationProperties.Name="下一首" />
+      <Button x:Name="QueueButton" Theme="{StaticResource DesktopBubble}" Content="&#xE8FD;"
+              ToolTip.Tip="播放列表" AutomationProperties.Name="播放列表">
+        <Button.Flyout>
+          <Flyout Placement="Top" FlyoutPresenterClasses="desktop-popover" Opened="Popover_OnOpened" Closed="Popover_OnClosed">
+            <StackPanel Width="310" Spacing="10">
+              <TextBlock Text="播放列表" FontSize="16" FontWeight="Bold" />
+              <TextBlock x:Name="QueueEmpty" Text="播放列表为空，请先添加歌曲。" FontSize="13" Opacity="0.7" />
+              <ScrollViewer MaxHeight="270" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                <ItemsControl ItemsSource="{Binding Queue}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="*,34" Margin="0,2">
+                        <Button Command="{Binding PlayCommand}" Click="QueueTrack_OnClick"
+                                Theme="{StaticResource SkySongInfoButtonTheme}" Padding="8"
+                                HorizontalContentAlignment="Stretch">
+                          <StackPanel Spacing="3">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Artist}" FontSize="12" Opacity="0.65" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE711;"
+                                Click="RemoveQueueTrack_OnClick" ToolTip.Tip="从队列移除，保留曲库文件" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+      <Button x:Name="SettingsButton" Theme="{StaticResource DesktopBubble}" Content="&#xE713;"
+              ToolTip.Tip="歌词外观" AutomationProperties.Name="歌词外观设置">
+        <Button.Flyout>
+          <Flyout Placement="Top" FlyoutPresenterClasses="desktop-popover" Opened="Popover_OnOpened" Closed="Popover_OnClosed">
+            <ScrollViewer MaxHeight="480" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+              <StackPanel x:Name="AppearancePanel" Width="300" Spacing="12">
+                <TextBlock Text="桌面歌词外观" FontSize="16" FontWeight="Bold" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="字体大小" />
+                  <TextBlock Grid.Column="1" Text="{Binding FontSize, StringFormat={}{0:0} px}" />
+                </Grid>
+                <Slider x:Name="FontSizeSlider" Theme="{StaticResource SkyProgressBarTheme}"
+                        Minimum="20" Maximum="64" TickFrequency="1" IsSnapToTickEnabled="True"
+                        Value="{Binding FontSize, Mode=TwoWay}" ToolTip.Tip="字体大小" />
+                <ItemsControl ItemsSource="{Binding Colors}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Spacing="6" Margin="0,0,0,12">
+                        <TextBlock Text="{Binding Label}" />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                          <!-- 点击色块打开完整色谱，可拖动选择颜色；透明度由歌词设置统一管理。 -->
+                          <ColorPicker Color="{Binding SelectedColor, Mode=TwoWay}" Width="120"
+                                       IsAlphaEnabled="False" IsAlphaVisible="False"
+                                       IsColorSpectrumVisible="True" IsColorSpectrumSliderVisible="True"
+                                       IsColorComponentsVisible="False" IsColorModelVisible="False"
+                                       IsHexInputVisible="True" IsColorPaletteVisible="False"
+                                       IsAccentColorsVisible="False" ColorSpectrumComponents="SaturationValue"
+                                       ToolTip.Tip="打开调色盘">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                              <Border Width="16" Height="16" Background="{Binding Brush}"
+                                      CornerRadius="4" BorderBrush="#80929CAA" BorderThickness="1" />
+                              <TextBlock Text="调色盘" FontSize="13" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </ColorPicker>
+                          <TextBox Grid.Column="1" Text="{Binding Hex, Mode=TwoWay}" PlaceholderText="#RRGGBB"
+                                   MaxLength="7" MinHeight="30" FontSize="13" ToolTip.Tip="输入十六进制颜色，如 #FFCB70" />
+                        </Grid>
+                        <TextBlock IsVisible="{Binding HasError}" Text="请输入 #RRGGBB，暂时保留上次有效颜色。"
+                                   Foreground="#C43C39" FontSize="11" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="描边宽度" />
+                  <TextBlock Grid.Column="1" Text="{Binding OutlineWidth, StringFormat={}{0:0.0} px}" />
+                </Grid>
+                <Slider Theme="{StaticResource SkyProgressBarTheme}"
+                        Minimum="0" Maximum="4" TickFrequency="0.5" IsSnapToTickEnabled="True"
+                        Value="{Binding OutlineWidth, Mode=TwoWay}" ToolTip.Tip="文字描边宽度" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="歌词不透明度" />
+                  <TextBlock Grid.Column="1" Text="{Binding OpacityPercent, StringFormat={}{0:0}%}" />
+                </Grid>
+                <Slider Theme="{StaticResource SkyProgressBarTheme}"
+                        Minimum="20" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                        Value="{Binding OpacityPercent, Mode=TwoWay}" ToolTip.Tip="仅调整歌词透明度，控制按钮保持可见" />
+                <TextBlock Text="拖动歌词可移动位置 · 外观自动保存&#10;填色按每句时间推进，暂停时停止。"
+                           FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SaveError}" Foreground="#C43C39" FontSize="12" TextWrapping="Wrap" />
+              </StackPanel>
+            </ScrollViewer>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+      <Button x:Name="CloseButton" Theme="{StaticResource DesktopBubble}" Content="&#xE711;"
+              Click="Close_OnClick" ToolTip.Tip="关闭桌面歌词，继续播放" AutomationProperties.Name="关闭桌面歌词" />
+    </StackPanel>
+    <controls:DesktopLyricText x:Name="LyricText" Margin="8,4,8,0" Cursor="SizeAll"
+                              AutomationProperties.Name="{Binding CurrentDesktopLyric}" />
+  </Grid>
 </Window>

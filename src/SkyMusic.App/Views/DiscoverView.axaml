@@ -8,7 +8,6 @@
     <controls:SkyWindowHeader Title="发现音乐" ShowForward="True">
       <controls:SkyWindowHeader.TrailingContent>
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <controls:SkySearchBox Width="218" Text="{Binding SearchText}" Watermark="搜索歌曲、歌手或乐谱" />
           <Border Width="30" Height="30" CornerRadius="8" ClipToBounds="True"
                   Background="{StaticResource SkyBrushPlaceholder}">
             <Image Source="avares://SkyMusic.App/Assets/logo.jpg" Stretch="UniformToFill" />

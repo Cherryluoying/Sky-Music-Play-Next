@@ -3,14 +3,15 @@
              x:Name="Root"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Border Classes="sky-search" Padding="12,0">
+  <Border Classes="sky-search" Padding="12,0" ClipToBounds="True">
     <Grid ColumnDefinitions="20,*">
       <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons" FontSize="14"
                  Foreground="{StaticResource SkyBrushTextSecondary}"
                  VerticalAlignment="Center" IsHitTestVisible="False" />
       <TextBox Grid.Column="1" Classes="sky-search-input"
                Text="{Binding Text, ElementName=Root, Mode=TwoWay}"
-               PlaceholderText="{Binding Watermark, ElementName=Root}" />
+               UseFloatingPlaceholder="False" AcceptsReturn="False"
+               PlaceholderText="{Binding EffectivePlaceholder, ElementName=Root}" />
     </Grid>
   </Border>
 </UserControl>

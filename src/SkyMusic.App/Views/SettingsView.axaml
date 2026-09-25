@@ -35,6 +35,15 @@
             </Grid>
             <Button Theme="{StaticResource SkyCommandButtonTheme}" HorizontalAlignment="Left"
                     Content="管理按键映射" Command="{Binding OpenKeyMappingCommand}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="4">
+                <TextBlock Text="悬浮演奏窗" Classes="sky-card-title" />
+                <TextBlock Text="单击猫爪悬浮球选歌与控制演奏，拖动可移动；开关自动保存"
+                           Classes="sky-caption" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding FloatingWindowEnabled, Mode=TwoWay}"
+                            OnContent="开启" OffContent="关闭" AutomationProperties.Name="悬浮演奏窗" />
+            </Grid>
           </StackPanel>
         </Border>
 
@@ -120,6 +129,43 @@
           </StackPanel>
         </Border>
 
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
+            <TextBlock Text="曲谱与 MIDI 库" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="100,*,Auto,Auto" RowDefinitions="Auto,12,Auto">
+              <TextBlock Text="曲谱目录" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding ScoreLibraryDirectory}" PlaceholderText="留空使用默认 musicscore 目录" />
+              <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="选择目录" Tag="score" Click="SelectLibraryDirectory_OnClick" />
+              <Button Grid.Column="3" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="打开目录" Tag="score" Click="OpenLibraryDirectory_OnClick" />
+              <TextBlock Grid.Row="2" Text="MIDI 目录" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding MidiLibraryDirectory}" PlaceholderText="留空使用默认 midi 目录" />
+              <Button Grid.Row="2" Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="选择目录" Tag="midi" Click="SelectLibraryDirectory_OnClick" />
+              <Button Grid.Row="2" Grid.Column="3" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="打开目录" Tag="midi" Click="OpenLibraryDirectory_OnClick" />
+            </Grid>
+            <TextBlock Text="点击保存设置后立即用于后续导入；已有曲目保留原路径。选择目录不会自动导入其中的文件。"
+                       Classes="sky-caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+              <TextBlock Text="猫橘咪音乐" Classes="sky-section-title" />
+              <TextBlock Text="项目源码、版本更新与问题反馈" Classes="sky-secondary" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource SkyCommandButtonTheme}" Click="ProjectAddress_OnClick"
+                    ToolTip.Tip="https://github.com/Cherryluoying/Sky-Music-Play-Next">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="&#xE774;" FontFamily="Segoe Fluent Icons" />
+                <TextBlock Text="项目地址" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
         <TextBlock Text="{Binding StatusText}" Classes="sky-secondary" TextWrapping="Wrap" />
       </StackPanel>
     </ScrollViewer>

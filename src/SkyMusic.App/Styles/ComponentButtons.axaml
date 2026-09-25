@@ -20,10 +20,14 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
-            <ContentPresenter Content="{TemplateBinding Content}"
-                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                              HorizontalContentAlignment="Center"
-                              VerticalContentAlignment="Center" />
+            <!-- 图标按钮统一由 TextBlock 绘制，确保沉浸深色页不会退回黑色默认前景色。 -->
+            <TextBlock Text="{TemplateBinding Content}"
+                       FontFamily="{TemplateBinding FontFamily}"
+                       FontSize="{TemplateBinding FontSize}"
+                       FontWeight="{TemplateBinding FontWeight}"
+                       Foreground="{TemplateBinding Foreground}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
           </Border>
         </ControlTemplate>
       </Setter>

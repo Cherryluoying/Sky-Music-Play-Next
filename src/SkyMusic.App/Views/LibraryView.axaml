@@ -8,7 +8,7 @@
     <controls:SkyWindowHeader Title="本地歌单" ShowForward="True">
       <controls:SkyWindowHeader.TrailingContent>
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-          <controls:SkySearchBox Width="220" Text="{Binding SearchText}" Watermark="搜索歌曲、作者或歌手" />
+          <controls:SkySearchBox Width="220" Text="{Binding SearchText}" Watermark="筛选本地歌单" />
           <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Click="ImportMedia_OnClick">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <TextBlock Text="&#xE898;" FontFamily="Segoe Fluent Icons" />
@@ -28,7 +28,7 @@
           </StackPanel>
           <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="sky-caption" VerticalAlignment="Center" />
         </Grid>
-        <Grid ColumnDefinitions="36,50,*,130,52,40" Margin="0,2,0,0">
+        <Grid ColumnDefinitions="36,50,*,130,52,40,40" Margin="0,2,0,0">
           <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
           <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />

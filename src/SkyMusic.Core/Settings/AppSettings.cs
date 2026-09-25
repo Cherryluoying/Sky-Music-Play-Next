@@ -25,6 +25,9 @@ public sealed record GeneralSettings
     public string DefaultPlaybackTargetId { get; init; } = "sky-15";
 
     public bool RememberLastTarget { get; init; } = true;
+
+    // 悬浮演奏入口默认关闭，用户可在设置中开启并记住选择。
+    public bool FloatingWindowEnabled { get; init; }
 }
 
 public sealed record ExternalToolSettings
@@ -58,4 +61,8 @@ public sealed record NetworkSettings
 public sealed record StorageSettings
 {
     public string? CacheDirectory { get; init; }
+
+    public string? ScoreLibraryDirectory { get; init; }
+
+    public string? MidiLibraryDirectory { get; init; }
 }

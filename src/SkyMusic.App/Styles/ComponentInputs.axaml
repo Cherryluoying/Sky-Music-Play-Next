@@ -61,7 +61,7 @@
       <Setter Property="Height" Value="12" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Grid Height="12">
+          <Grid Height="12" Background="Transparent">
             <Track x:Name="PART_Track" Height="4" VerticalAlignment="Center"
                    Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
                    Value="{TemplateBinding Value}" Orientation="{TemplateBinding Orientation}">
@@ -81,6 +81,20 @@
     </ControlTheme>
   </Styles.Resources>
 
+  <!-- 单行输入统一垂直居中，包含只读地址框；多行编辑仍从顶部排版。 -->
+  <Style Selector="TextBox">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox[AcceptsReturn=True]">
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
   <Style Selector="Border.sky-search">
     <Setter Property="Height" Value="38" />
     <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
@@ -94,23 +108,27 @@
   </Style>
   <Style Selector="Border.sky-search:focus-within">
     <Setter Property="Background" Value="{StaticResource SkyBrushSurface}" />
-    <Setter Property="BorderBrush" Value="{StaticResource SkyBrushAccent}" />
+    <Setter Property="BorderBrush" Value="#60FFCB70" />
   </Style>
   <Style Selector="TextBox.sky-search-input">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="TextAlignment" Value="Left" />
     <Setter Property="FontSize" Value="{StaticResource SkyFontSizeBody}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="TextBox.sky-search-input /template/ Border#PART_Border">
+  <!-- Avalonia 12 的模板部件名是 PART_BorderElement；外层边框统一负责焦点反馈。 -->
+  <Style Selector="TextBox.sky-search-input /template/ Border#PART_BorderElement">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
   </Style>
-  <Style Selector="TextBox.sky-search-input:pointerover /template/ Border#PART_Border">
+  <Style Selector="TextBox.sky-search-input:pointerover /template/ Border#PART_BorderElement">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
-  <Style Selector="TextBox.sky-search-input:focus /template/ Border#PART_Border">
+  <Style Selector="TextBox.sky-search-input:focus /template/ Border#PART_BorderElement">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
   </Style>

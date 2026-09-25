@@ -48,7 +48,7 @@
                 Content="&#xE72B;" ToolTip.Tip="返回" Foreground="White"
                 VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9"
-                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                    IsVisible="{Binding IsMidi}" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource SkyBrushAccent}" />
           <TextBlock Text="{Binding PlayerPageTitle}" Foreground="#D9FFFFFF" FontSize="12"
                      FontWeight="SemiBold" />
@@ -61,33 +61,43 @@
                 ToolTip.Tip="更多功能待接入" VerticalAlignment="Center" />
       </Grid>
 
-      <Grid Grid.Row="2" Margin="64,18,64,28" MaxWidth="1320" HorizontalAlignment="Center">
-        <Grid IsVisible="{Binding ShowsLyrics}" ColumnDefinitions="0.9*,1.15*" ColumnSpacing="62">
-          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18">
-            <Border Width="350" Height="350" CornerRadius="18"
-                    Background="#24FFFFFF" BorderBrush="#32FFFFFF" BorderThickness="1"
-                    BoxShadow="0 18 46 0 #70000000" ClipToBounds="True">
-              <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
-            </Border>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="9">
-              <TextBlock Text="{Binding PositionText}" Foreground="#B8FFFFFF" FontSize="11" />
-              <Border Width="42" Height="1" Background="#54FFFFFF" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding DurationText}" Foreground="#78FFFFFF" FontSize="11" />
-            </StackPanel>
+      <!-- MIDI 页面没有歌词列时也必须占满可用尺寸，否则自定义控件的 DesiredSize 为 0。 -->
+      <Grid Grid.Row="2" Margin="64,18,64,28" MaxWidth="1320" MinHeight="260"
+            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid x:Name="LyricsColumns" IsVisible="{Binding ShowsLyrics}" ColumnDefinitions="380,*,*"
+              SizeChanged="LyricsColumns_OnSizeChanged" ClipToBounds="True">
+          <!-- 参考网页版的唱片封套层次；整个舞台按可用区域缩放，不参与歌词内容测量。 -->
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Stretch" Spacing="18" MinWidth="0">
+            <Viewbox Stretch="Uniform" MaxHeight="380" HorizontalAlignment="Stretch">
+              <Grid Width="450" Height="360">
+                <Border Width="304" Height="304" CornerRadius="152" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Background="#161719" BorderBrush="#32FFFFFF" BorderThickness="1"
+                        BoxShadow="0 14 26 0 #50000000">
+                  <Border Margin="22" CornerRadius="130" BorderBrush="#18FFFFFF" BorderThickness="1">
+                    <Border Width="108" Height="108" CornerRadius="54" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <Grid>
+                        <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" Opacity="0.8" />
+                        <Border Width="10" Height="10" CornerRadius="5" Background="#17191C"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </Border>
+                </Border>
+                <Border Width="350" Height="350" CornerRadius="24" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Background="#24FFFFFF" BoxShadow="0 14 30 0 #50000000" ClipToBounds="True">
+                  <Image Source="{Binding CurrentItem.Cover}" Stretch="UniformToFill" />
+                </Border>
+              </Grid>
+            </Viewbox>
           </StackPanel>
 
-          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" VerticalAlignment="Stretch">
+          <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" VerticalAlignment="Stretch" MinWidth="0" ClipToBounds="True">
             <TextBlock Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
                        Foreground="White" FontSize="34" FontWeight="Bold"
                        TextWrapping="Wrap" MaxLines="2" />
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="9" Margin="0,8,0,22">
-              <TextBlock Text="{Binding CurrentItem.Artist, FallbackValue=猫橘咪音乐}"
-                         Foreground="#D4FFFFFF" FontSize="14" FontWeight="SemiBold" />
-              <TextBlock Text="·" Foreground="#68FFFFFF" FontSize="14" />
-              <TextBlock Text="{Binding CurrentItem.Album, FallbackValue=本地音乐}"
-                         Foreground="#92FFFFFF" FontSize="14" />
-            </StackPanel>
-            <Grid Grid.Row="2">
+            <TextBlock Grid.Row="1" Text="{Binding CurrentItem.ArtistAlbumText, FallbackValue=猫橘咪音乐}"
+                       Margin="0,8,0,22" Foreground="#B8FFFFFF" FontSize="14" TextTrimming="CharacterEllipsis" />
+            <Grid Grid.Row="2" MinWidth="0" ClipToBounds="True">
               <controls:LyricsView IsVisible="{Binding HasLyrics}" />
               <StackPanel IsVisible="{Binding HasNoLyrics}" HorizontalAlignment="Left"
                           VerticalAlignment="Center" Spacing="13" MaxWidth="360">
@@ -106,6 +116,9 @@
           </Grid>
         </Grid>
         <controls:MidiPianoRoll IsVisible="{Binding IsMidi}"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Margin="0,0,0,4"
                                 Notes="{Binding MidiNotes}" PositionSeconds="{Binding PositionSeconds}" />
       </Grid>
     </Grid>

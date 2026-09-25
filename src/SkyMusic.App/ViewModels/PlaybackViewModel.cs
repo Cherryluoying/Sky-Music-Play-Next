@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Lyrics;
+using SkyMusic.Core.Plugins;
 using SkyMusic.Core.Playback;
 using SkyMusic.Core.Services;
 
@@ -31,6 +32,28 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     private string? _playbackError;
     private CancellationTokenSource? _playbackRequest;
     private CancellationTokenSource? _seekRequest;
+    private bool _isScrubbing;
+    private readonly IInstrumentPluginHost? _instrumentPluginHost;
+    private readonly IReadOnlyList<string> _vst3SearchPaths;
+    private bool _isInstrumentPopupOpen;
+    private InstrumentPluginInfo? _selectedInstrumentPlugin;
+    private PlaybackSnapshot? _pendingSnapshot;
+    private int _snapshotQueued;
+    private bool _disposed;
+    private readonly PlaybackQueueOrder _queueOrder = new();
+    private double _volumePercent = 100;
+
+    public bool CanAdjustVolume => CurrentItem?.Kind == MediaKind.Audio && _player is IAudioVolumeControl;
+    public double VolumePercent
+    {
+        get => _volumePercent;
+        set
+        {
+            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 100) : 100;
+            if (SetProperty(ref _volumePercent, bounded) && _player is IAudioVolumeControl output)
+                output.Volume = bounded / 100;
+        }
+    }
 
     public PlaybackViewModel(
         IPlaybackController player,
@@ -38,13 +61,17 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         IMediaLibraryStore? libraryStore = null,
         IScorePlaybackController? scoreController = null,
         IMidiVisualizationService? midiVisualization = null,
-        string? localLyricsDirectory = null)
+        string? localLyricsDirectory = null,
+        IInstrumentPluginHost? instrumentPluginHost = null,
+        IReadOnlyList<string>? vst3SearchPaths = null)
     {
         _player = player;
         _lyricsProvider = lyricsProvider;
         _libraryStore = libraryStore;
         _scoreController = scoreController;
         _midiVisualization = midiVisualization;
+        _instrumentPluginHost = instrumentPluginHost;
+        _vst3SearchPaths = ResolveVst3SearchPaths(vst3SearchPaths);
         _localLyricsDirectory = Path.GetFullPath(localLyricsDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SkyMusicPlay",
@@ -91,6 +118,15 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             _ => { });
         ToggleQueuePopupCommand = new RelayCommand(_ => IsQueuePopupOpen = !IsQueuePopupOpen);
         ToggleScoreSettingsCommand = new RelayCommand(_ => IsScoreSettingsOpen = !IsScoreSettingsOpen);
+        ScanInstrumentPluginsCommand = new RelayCommand(_ => ScanInstrumentPlugins());
+        LoadInstrumentPluginCommand = new AsyncRelayCommand(
+            _ => LoadInstrumentPluginAsync(),
+            _ => IsMidi && SelectedInstrumentPlugin is not null && _instrumentPluginHost is not null,
+            SetInstrumentError);
+        OpenInstrumentEditorCommand = new AsyncRelayCommand(
+            _ => OpenInstrumentEditorAsync(),
+            _ => IsMidi && _instrumentPluginHost?.Snapshot.State == InstrumentHostState.Loaded,
+            SetInstrumentError);
         if (_scoreController is not null)
         {
             _scoreController.Changed += OnScoreControllerChanged;
@@ -103,13 +139,42 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public event EventHandler? MediaLibraryChanged;
 
+    // 未配置路径时仍扫描 Windows 常见 VST3 目录，避免 MIDI 页面显示空插件列表。
+    private static IReadOnlyList<string> ResolveVst3SearchPaths(IReadOnlyList<string>? configured)
+    {
+        if (configured is { Count: > 0 })
+        {
+            return configured;
+        }
+
+        var paths = new List<string>();
+        var commonFiles = Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles);
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        if (!string.IsNullOrWhiteSpace(commonFiles))
+        {
+            paths.Add(Path.Combine(commonFiles, "VST3"));
+        }
+        if (!string.IsNullOrWhiteSpace(programFiles))
+        {
+            paths.Add(Path.Combine(programFiles, "VSTPlugins"));
+        }
+        return paths;
+    }
+
     public ObservableCollection<TrackItemViewModel> Queue { get; } = [];
 
     public ObservableCollection<TrackItemViewModel> RecentTracks { get; } = [];
 
     public ObservableCollection<LyricLineViewModel> Lyrics { get; } = [];
 
-    public ObservableCollection<MidiVisualNote> MidiNotes { get; } = [];
+    // 使用不可变快照绑定钢琴窗，避免后台解析完成后集合实例不变而不触发重绘。
+    private IReadOnlyList<MidiVisualNote> _midiNotes = [];
+
+    public IReadOnlyList<MidiVisualNote> MidiNotes
+    {
+        get => _midiNotes;
+        private set => SetProperty(ref _midiNotes, value);
+    }
 
     public AsyncRelayCommand TogglePlayCommand { get; }
 
@@ -133,7 +198,33 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public RelayCommand ToggleScoreSettingsCommand { get; }
 
+    public RelayCommand ScanInstrumentPluginsCommand { get; }
+
+    public AsyncRelayCommand LoadInstrumentPluginCommand { get; }
+
+    public AsyncRelayCommand OpenInstrumentEditorCommand { get; }
+
     public bool IsMidi => CurrentItem?.Track.Kind == MediaKind.Midi;
+
+    public ObservableCollection<InstrumentPluginInfo> InstrumentPlugins { get; } = [];
+
+    public InstrumentPluginInfo? SelectedInstrumentPlugin
+    {
+        get => _selectedInstrumentPlugin;
+        set
+        {
+            if (SetProperty(ref _selectedInstrumentPlugin, value))
+            {
+                LoadInstrumentPluginCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsInstrumentPopupOpen
+    {
+        get => _isInstrumentPopupOpen;
+        set => SetProperty(ref _isInstrumentPopupOpen, value);
+    }
 
     public bool ShowsLyrics => !IsMidi;
 
@@ -156,6 +247,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             TogglePlayCommand.NotifyCanExecuteChanged();
             PreviousCommand.NotifyCanExecuteChanged();
             NextCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(CanSeek));
         }
     }
 
@@ -227,14 +319,18 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
             OnPropertyChanged(nameof(CurrentTrack));
             OnPropertyChanged(nameof(HasTrack));
+            OnPropertyChanged(nameof(CanSeek));
             OnPropertyChanged(nameof(DurationText));
             OnPropertyChanged(nameof(CurrentDesktopLyric));
             OnPropertyChanged(nameof(NextDesktopLyric));
             OnPropertyChanged(nameof(IsMidi));
+            OnPropertyChanged(nameof(CanAdjustVolume));
             OnPropertyChanged(nameof(IsScore));
             OnPropertyChanged(nameof(ShowsLyrics));
             OnPropertyChanged(nameof(HasNoLyrics));
             OnPropertyChanged(nameof(PlayerPageTitle));
+            LoadInstrumentPluginCommand.NotifyCanExecuteChanged();
+            OpenInstrumentEditorCommand.NotifyCanExecuteChanged();
             LoadMidiVisualization(value);
         }
     }
@@ -242,19 +338,37 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public MusicTrack? CurrentTrack => CurrentItem?.Track;
 
     public bool HasTrack => CurrentItem is not null;
+    public bool CanSeek => HasTrack && !IsPlaybackLoading;
+
+    // 拖动只改变 UI 预览值；实时快照不能覆盖指针选择的位置。
+    public void BeginScrub()
+    {
+        if (!CanSeek) return;
+        _isScrubbing = true;
+        _seekRequest?.Cancel();
+    }
+
+    public void EndScrub(bool commit)
+    {
+        if (!_isScrubbing) return;
+        _isScrubbing = false;
+        if (commit && CanSeek) QueueSeek(TimeSpan.FromSeconds(PositionSeconds));
+        else ApplySnapshot(_player.Snapshot);
+    }
 
     public double PositionSeconds
     {
         get => _positionSeconds;
         set
         {
+            value = double.IsFinite(value) ? Math.Clamp(value, 0, DurationSeconds) : 0;
             if (!SetProperty(ref _positionSeconds, value))
             {
                 return;
             }
 
             OnPropertyChanged(nameof(PositionText));
-            if (!_applyingSnapshot)
+            if (!_applyingSnapshot && !_isScrubbing)
             {
                 QueueSeek(TimeSpan.FromSeconds(value));
             }
@@ -321,11 +435,25 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     // 替换播放队列并保持当前曲目索引
     public void SetQueue(IEnumerable<TrackItemViewModel> tracks)
     {
+        var incoming = tracks.ToArray();
+        _queueOrder.Merge(incoming.Select(item => item.Track.Id));
+        RebuildQueue(incoming);
+    }
+
+    // 只更新队列中的展示数据，保留用户安排的下一首和已经移除的曲目状态。
+    private void RebuildQueue(IEnumerable<TrackItemViewModel> updated)
+    {
+        var items = Queue.Concat(updated).GroupBy(item => item.Track.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.OrdinalIgnoreCase);
         var currentId = CurrentItem?.Track.Id;
         Queue.Clear();
-        foreach (var track in tracks)
+        foreach (var id in _queueOrder.Items)
         {
-            Queue.Add(track);
+            if (items.TryGetValue(id, out var track))
+            {
+                track.IsSelected = string.Equals(id, currentId, StringComparison.OrdinalIgnoreCase);
+                Queue.Add(track);
+            }
         }
 
         var replacement = currentId is null
@@ -339,6 +467,18 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         // 刷新曲库只更新队列，不应在每次启动时擅自选中第一首歌曲。
     }
 
+    public void PlayNext(TrackItemViewModel item)
+    {
+        _queueOrder.AddNext(item.Track.Id);
+        RebuildQueue([item]);
+    }
+
+    public void RemoveFromQueue(TrackItemViewModel item)
+    {
+        _queueOrder.Remove(item.Track.Id);
+        Queue.Remove(item);
+    }
+
     public void PlayTrack(TrackItemViewModel item, bool autoplay = true) =>
         _ = PlayTrackAsync(item, autoplay);
 
@@ -350,6 +490,10 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         var previousRequest = Interlocked.Exchange(ref _playbackRequest, request);
         previousRequest?.Cancel();
         IsPlaybackLoading = true;
+
+        // 新曲目接管前取消旧曲目的待跳转请求，防止松手或排队的 Seek 作用到新曲目。
+        _isScrubbing = false;
+        _seekRequest?.Cancel();
 
         var entered = false;
         try
@@ -397,6 +541,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         bool autoplay,
         CancellationToken cancellationToken)
     {
+        _queueOrder.Select(item.Track.Id);
+        RebuildQueue([item]);
         foreach (var track in Queue)
         {
             track.IsSelected = ReferenceEquals(track, item);
@@ -489,7 +635,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     // MIDI 曲目进入播放页时异步读取音符，不阻塞队列切换。
     private async void LoadMidiVisualization(TrackItemViewModel? item)
     {
-        MidiNotes.Clear();
+        MidiNotes = [];
         if (item?.Track.Kind != MediaKind.Midi || string.IsNullOrWhiteSpace(item.Track.SourcePath) ||
             _midiVisualization is null)
         {
@@ -504,14 +650,25 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             {
                 return;
             }
-            foreach (var note in notes)
+
+            // MIDI 解析在后台线程执行，集合绑定必须回到 Avalonia UI 线程。
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                MidiNotes.Add(note);
-            }
+                if (CurrentItem?.Track.Id != trackId)
+                {
+                    return;
+                }
+
+                MidiNotes = notes.ToArray();
+            });
         }
-        catch (Exception) when (CurrentItem?.Track.Id == trackId)
+        catch (Exception)
         {
-            MidiNotes.Clear();
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // 旧文件解析失败也必须被捕获，快速切歌不能让 async void 异常退出进程。
+                if (CurrentItem?.Track.Id == trackId) MidiNotes = [];
+            });
         }
     }
 
@@ -588,6 +745,18 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         RecentTracks.Insert(0, item);
     }
 
+    // 悬浮搜索必须先暂停前台键盘演奏，再让搜索框获取输入焦点。
+    public async Task PauseForTextInputAsync()
+    {
+        await _playbackGate.WaitAsync();
+        try
+        {
+            if (IsScore && _player.Snapshot.State == PlaybackState.Playing)
+                await _player.PauseAsync();
+        }
+        finally { _playbackGate.Release(); }
+    }
+
     private async Task TogglePlayAsync()
     {
         try
@@ -620,6 +789,60 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         await _libraryStore.SetFavoriteAsync(item.Track.Id, item.IsFavorite);
         MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    // 扫描 VST3 音色，只在 MIDI 播放页的钢琴按钮中使用。
+    private void ScanInstrumentPlugins()
+    {
+        if (_instrumentPluginHost is null || !IsMidi)
+        {
+            return;
+        }
+
+        InstrumentPlugins.Clear();
+        foreach (var plugin in _instrumentPluginHost.DiscoverPlugins(_vst3SearchPaths))
+        {
+            InstrumentPlugins.Add(plugin);
+        }
+
+        SelectedInstrumentPlugin ??= InstrumentPlugins.FirstOrDefault();
+    }
+
+    private async Task LoadInstrumentPluginAsync()
+    {
+        if (!IsMidi || _instrumentPluginHost is null || SelectedInstrumentPlugin is null)
+        {
+            return;
+        }
+
+        if (_player is IMidiPlaybackOutputControl midiOutput)
+        {
+            // 输出切换由播放器串行完成，避免加载插件期间内置音源继续发声。
+            await midiOutput.LoadInstrumentAsync(SelectedInstrumentPlugin);
+        }
+        OpenInstrumentEditorCommand.NotifyCanExecuteChanged();
+    }
+
+    // 打开 VST3 原生插件界面，参数调整由插件自身负责。
+    private async Task OpenInstrumentEditorAsync()
+    {
+        if (!IsMidi || _instrumentPluginHost is null)
+        {
+            return;
+        }
+
+        if (!await _instrumentPluginHost.OpenEditorAsync())
+        {
+            PlaybackError = "当前 VST3 插件没有可用的图形编辑器";
+        }
+    }
+
+    private void SetInstrumentError(Exception exception)
+    {
+        PlaybackError = exception.Message.Contains("no editor", StringComparison.OrdinalIgnoreCase)
+            ? "当前 VST3 插件没有原生编辑器界面，只能使用插件默认音色。"
+            : exception.Message;
+    }
+
 
     private async Task RecordPlayedAsync(MusicTrack track)
     {
@@ -664,14 +887,16 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             return Task.CompletedTask;
         }
 
-        var currentIndex = CurrentItem is null ? 0 : Queue.IndexOf(CurrentItem);
-        var nextIndex = (currentIndex + offset + Queue.Count) % Queue.Count;
-        return PlayTrackAsync(Queue[nextIndex], true);
+        var id = _queueOrder.Adjacent(offset);
+        var next = Queue.FirstOrDefault(item => string.Equals(item.Track.Id, id, StringComparison.OrdinalIgnoreCase));
+        return next is null ? Task.CompletedTask : PlayTrackAsync(next, true);
     }
 
     // 拖动进度条时只保留最后一次跳转，避免高频 Seek 堵塞自动演奏控制器。
     private void QueueSeek(TimeSpan position)
     {
+        if (_disposed || !CanSeek) return;
+        PlaybackError = null;
         var request = new CancellationTokenSource();
         var previousRequest = Interlocked.Exchange(ref _seekRequest, request);
         previousRequest?.Cancel();
@@ -680,20 +905,30 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     private async Task SeekAsync(TimeSpan position, CancellationTokenSource request)
     {
+        var entered = false;
         try
         {
-            await _player.SeekAsync(position, request.Token);
+            await _playbackGate.WaitAsync(request.Token);
+            entered = true;
+            request.Token.ThrowIfCancellationRequested();
+            // 解码器重定位可能同步重建输出，在工作线程执行以免松手时阻塞 UI。
+            await Task.Run(async () => await _player.SeekAsync(position, request.Token), request.Token);
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            PlaybackError = exception.Message;
+            if (!request.IsCancellationRequested) PlaybackError = exception.Message;
         }
         finally
         {
-            Interlocked.CompareExchange(ref _seekRequest, null, request);
+            if (entered) _playbackGate.Release();
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _seekRequest, null, request), request) && !_disposed)
+            {
+                Interlocked.Exchange(ref _pendingSnapshot, null);
+                ApplySnapshot(_player.Snapshot);
+            }
             request.Dispose();
         }
     }
@@ -703,8 +938,19 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         PlaybackError = exception.Message;
     }
 
+    // UI 繁忙时只保留最新快照，60 FPS 更新不能排队回放旧位置。
     private void OnSnapshotChanged(object? sender, PlaybackSnapshot snapshot)
-        => Dispatcher.UIThread.Post(() => ApplySnapshot(snapshot));
+    {
+        if (_disposed) return;
+        Interlocked.Exchange(ref _pendingSnapshot, snapshot);
+        if (Interlocked.Exchange(ref _snapshotQueued, 1) != 0) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            Interlocked.Exchange(ref _snapshotQueued, 0);
+            var latest = Interlocked.Exchange(ref _pendingSnapshot, null);
+            if (!_disposed && latest is not null) ApplySnapshot(latest);
+        });
+    }
 
     // 把播放器快照同步到进度和播放状态
     private void ApplySnapshot(PlaybackSnapshot snapshot)
@@ -714,18 +960,18 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         {
             if (snapshot.Track is not null && CurrentTrack?.Id != snapshot.Track.Id)
             {
-                var item = Queue.FirstOrDefault(track => track.Track.Id == snapshot.Track.Id);
-                if (item is not null)
-                {
-                    PlayTrack(item, false);
-                }
+                // 快速切歌时丢弃旧后端快照，不能用旧快照反向触发再次加载歌曲。
+                return;
             }
 
             DurationSeconds = snapshot.Duration.TotalSeconds;
-            PositionSeconds = snapshot.Position.TotalSeconds;
+            if (!_isScrubbing && _seekRequest is null)
+            {
+                PositionSeconds = snapshot.Position.TotalSeconds;
+                UpdateCurrentLyric(snapshot.Position);
+            }
             IsPlaying = snapshot.State == PlaybackState.Playing;
             PersistResolvedDuration(snapshot.Duration);
-            UpdateCurrentLyric(snapshot.Position);
         }
         finally
         {
@@ -779,6 +1025,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _playbackRequest?.Cancel();
         _seekRequest?.Cancel();
         _lyricsRequest?.Cancel();

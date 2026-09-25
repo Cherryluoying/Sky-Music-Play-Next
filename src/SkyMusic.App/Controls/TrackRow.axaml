@@ -2,7 +2,7 @@
 <UserControl x:Class="SkyMusic.App.Controls.TrackRow"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Grid ColumnDefinitions="36,50,*,130,52,40">
+  <Grid ColumnDefinitions="36,50,*,130,52,40,40">
     <TextBlock Text="{Binding DisplayIndexText}" Classes="sky-caption" VerticalAlignment="Center" HorizontalAlignment="Center" />
     <Button Grid.Column="1" Grid.ColumnSpan="4" Theme="{StaticResource SkyTrackRowTheme}" Classes.selected="{Binding IsSelected}"
             DoubleTapped="Track_OnDoubleTapped" ToolTip.Tip="双击播放">
@@ -13,7 +13,8 @@
         </Border>
         <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="3">
           <TextBlock Text="{Binding Title}" Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
-          <TextBlock Text="{Binding Artist}" Classes="sky-secondary" FontSize="11" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding ArtistAlbumText}" ToolTip.Tip="{Binding ArtistAlbumText}"
+                     Classes="sky-secondary" FontSize="11" TextTrimming="CharacterEllipsis" />
         </StackPanel>
         <TextBlock Grid.Column="2" Text="{Binding Author}" Classes="sky-secondary" FontSize="11"
                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -24,5 +25,7 @@
     <Button Grid.Column="5" Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding ToggleFavoriteCommand}"
             Content="{Binding FavoriteGlyph}" ToolTip.Tip="喜欢" Classes="favorite-button"
             Classes.favorite-active="{Binding IsFavorite}" />
+    <Button Grid.Column="6" Theme="{StaticResource SkyIconButtonTheme}" Command="{Binding PlayNextCommand}"
+            IsVisible="{Binding CanPlayNext}" Content="&#xE893;" ToolTip.Tip="添加到下一首" />
   </Grid>
 </UserControl>

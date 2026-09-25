@@ -4,7 +4,7 @@
 <div align="center">
   <img src="logo.jpg" alt="SkyMusicPlay Logo" width="168" height="168">
 
-  <h1>Sky Music Play Next</h1>
+  <h1>猫橘咪音乐 · Sky Music Play Next</h1>
 
   <p>面向 Windows 的音乐播放、MIDI、钢琴练习、游戏乐器辅助与编谱工作区</p>
 
@@ -21,6 +21,8 @@
 > [!IMPORTANT]
 > 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成 <br>
 > 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能，演奏还在开发中
+
+> **使用演奏辅助时，请右键程序选择“以管理员身份运行”。** 向以管理员权限运行的游戏发送按键时，猫橘咪音乐也需要管理员权限。普通音乐播放、歌词和本地媒体管理可在普通权限下使用。
 
 > **请使用Visual Studio 2026 打开**
 
@@ -69,6 +71,11 @@ Intel 与 AMD 处理器共用能力驱动的执行路径，不再按 CPU 品牌�
 - 发现、媒体库、收藏、最近播放、任务和设置页面
 - 独立桌面歌词窗口与云端歌词缓存
 - 音频、MIDI、TXT/JSON 乐谱和键盘宏导入入口
+- 读取音频内嵌封面、歌曲名、歌手、专辑与作者，保存到 SQLite 媒体库
+- 播放队列支持“添加到下一首”和移除，进度条支持点击定位与拖动预览
+- 单句透明桌面歌词、悬停控制栏、字体/描边/填充颜色与透明度设置
+- 演奏悬浮球与单一气泡面板，支持歌单搜索、收藏、播放控制和演奏间隔/延迟设置
+- 悬浮面板随屏幕边缘调整位置；乐谱与 MIDI 导入目录可配置并直接打开
 
 ### 乐谱与自动演奏
 
@@ -94,6 +101,9 @@ Intel 与 AMD 处理器共用能力驱动的执行路径，不再按 CPU 品牌�
 - RtAudio WASAPI 后端与 64 复音乐器采样节点
 - Rubber Band 实时变速、变调和离线渲染基础
 - VST3 插件发现、隔离宿主和 MIDI 事件路径
+- MIDI 原始事件序列播放、插件音色切换与插件编辑器入口
+- MIDI 钢琴可视化、按键高亮及播放位置同步
+- FFmpeg 解码与 NAudio 音频输出、音量控制
 
 ### 外部扩展
 
@@ -169,7 +179,7 @@ PianoTrans
 | --- | --- |
 | 桌面端 | C#、.NET 10、Avalonia 12、AXAML、MVVM |
 | 原生层 | C++20、CMake、Windows SDK、Media Foundation |
-| 音频与 MIDI | RtAudio、RtMidi、Rubber Band、VST3 SDK |
+| 音频与 MIDI | NAudio、RtAudio、RtMidi、Rubber Band、VST3 SDK |
 | 乐谱与 MIDI 文件 | DryWetMIDI、Sky Studio / genshin-music 兼容格式 |
 | 云端服务 | Go 1.22、HTTP JSON API |
 | 外部工具 | FFmpeg、PianoTrans 1.0 |
@@ -187,7 +197,12 @@ PianoTrans
 - Visual Studio 2022/2026 C++ 桌面开发工具
 - CMake 3.25 或更高版本
 - Go 1.22，仅开发云端服务时需要
-- FFmpeg、PianoTrans 和 VST3 SDK 均为可选扩展
+- 本地音频解码与封面/标签读取使用 FFmpeg、FFprobe；一键构建脚本会准备并打包这两个工具
+- PianoTrans 为可选扩展；构建 VST3 宿主时需要 VST3 SDK
+
+### 权限要求
+
+使用游戏演奏辅助前，请右键 `SkyMusic.App.exe`，选择“以管理员身份运行”。Windows 会限制普通权限进程向高权限窗口注入按键；目标游戏以管理员身份运行时，本程序也需要提升权限。通过 Visual Studio 调试演奏辅助时，请以管理员身份启动 Visual Studio。普通音乐播放、歌词和本地媒体管理不要求管理员权限。
 
 ### 获取源码
 
@@ -219,6 +234,8 @@ powershell -ExecutionPolicy Bypass -File native/SkyMusic.VstHost/build.ps1 `
 ```
 
 ### 构建桌面端
+
+仓库根目录提供 `build-release.cmd`，可一键运行测试、发布桌面端并打包 FFmpeg / FFprobe，输出位于 `artifacts/release`。未找到本地工具时，脚本会下载 FFmpeg；原生模块仍按上方步骤构建。
 
 ```powershell
 dotnet restore
@@ -270,12 +287,14 @@ go run ./cmd/server
 - [x] 独立游戏编谱工作区与原生乐器采样试听
 - [x] Go 歌词/乐谱服务与桌面端缓存
 - [x] VST3 隔离宿主基础链路
-- [ ] 播放悬浮窗
+- [x] 播放悬浮窗、歌单搜索与演奏控制
+- [x] SQLite 本地媒体库、收藏、播放记录与播放队列
+- [x] 音频标签/封面读取、桌面歌词与进度条交互
 - [ ] 完成专业半 DAW 的轨道、钢琴卷帘与轻量混音界面
 - [ ] 完成 VST3 编辑器、预设和音频设备持久化
 - [ ] 将旧版识别模型转换为 ONNX 并完成 DirectML 一致性验证
 - [ ] 完成跟弹识别、透明提示层和全局热键
-- [ ] 扩展曲库持久化、在线内容 API 与更新系统
+- [ ] 扩展在线内容 API、云端同步与更新系统
 - [ ] UI 重设计与动画加入
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
@@ -293,11 +312,13 @@ go run ./cmd/server
 | Best README Template | [othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template) | README 信息结构参考 |
 | Avalonia | [AvaloniaUI/Avalonia](https://github.com/AvaloniaUI/Avalonia) | 桌面 UI 框架 |
 | DryWetMIDI | [melanchall/drywetmidi](https://github.com/melanchall/drywetmidi) | MIDI 文件读写 |
+| NAudio | [naudio/NAudio](https://github.com/naudio/NAudio) | FFmpeg 解码后的 PCM 音频输出与音量控制 |
 | RtMidi | [thestk/rtmidi](https://github.com/thestk/rtmidi) | 原生 MIDI 设备访问 |
 | RtAudio | [thestk/rtaudio](https://github.com/thestk/rtaudio) | 原生音频设备与回调 |
 | Rubber Band | [breakfastquay/rubberband](https://github.com/breakfastquay/rubberband) | 实时变速与变调 |
 | Essentia | [MTG/essentia](https://github.com/MTG/essentia) | 后续音频分析工作层基础 |
 | VST3 SDK | [steinbergmedia/vst3sdk](https://github.com/steinbergmedia/vst3sdk) | VST3 原生宿主开发 |
+| FFmpeg | [FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg) | 音频解码，配合 FFprobe 读取时长、标签与内嵌封面信息 |
 
 genshin-music 的 MIT 许可证副本保存在 `src/SkyMusic.App/Assets/GenshinMusic/Licenses`。Sky 乐器采样素材中特别感谢 Discord 用户 `Integrated Cane`
 

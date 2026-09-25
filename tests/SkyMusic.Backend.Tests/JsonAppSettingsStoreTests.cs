@@ -42,7 +42,12 @@ public sealed class JsonAppSettingsStoreTests
                     CloudServiceUrl = "https://music.example.test/",
                     TimeoutSeconds = 12
                 },
-                Storage = new StorageSettings { CacheDirectory = @"C:\Cache" }
+                Storage = new StorageSettings
+                {
+                    CacheDirectory = @"C:\Cache",
+                    ScoreLibraryDirectory = @"D:\曲谱库",
+                    MidiLibraryDirectory = @"D:\MIDI 库"
+                }
             };
 
             await store.SaveAsync(expected);

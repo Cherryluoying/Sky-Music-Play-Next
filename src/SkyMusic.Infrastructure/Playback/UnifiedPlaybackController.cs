@@ -1,40 +1,130 @@
 // 模块：SkyMusic.Infrastructure 音频、MIDI 与乐谱统一播放控制器
-using System.Runtime.InteropServices;
-using System.Text;
+using System.Diagnostics;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Playback;
 using SkyMusic.Core.Services;
+using SkyMusic.Core.Plugins;
+using SkyMusic.Infrastructure.Scores;
 
 namespace SkyMusic.Infrastructure.Playback;
 
-public sealed class UnifiedPlaybackController : IPlaybackController
+public sealed class UnifiedPlaybackController : IPlaybackController, IMidiPlaybackOutputControl, IAudioVolumeControl
 {
     private const string MediaAlias = "skymusic_media";
     private readonly object _gate = new();
+    private readonly object _nativeGate = new();
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly PreviewPlaybackController _preview = new();
     private readonly IScorePlaybackController _score;
     private readonly FfmpegAudioPlayer? _audio;
     private readonly Timer _timer;
+    private readonly IInstrumentPluginHost? _instrumentHost;
+    private readonly IMciCommands _mci;
+    private bool _nativeOpened;
+    private bool _externalSequenceReady;
+    private IMidiSequenceHost? SequenceHost => _instrumentHost as IMidiSequenceHost;
+    private bool HasExternalInstrument => _useExternalInstrument &&
+        _instrumentHost?.Snapshot.State == InstrumentHostState.Loaded && SequenceHost is not null;
     private PlaybackBackend _backend;
     private MusicTrack? _track;
     private PlaybackState _nativeState = PlaybackState.Stopped;
     private TimeSpan _nativeDuration;
+    // 某些 Windows MCI sequencer 驱动无法返回 position，使用单调时钟补足进度。
+    private TimeSpan _nativePosition;
+    private TimeSpan _nativeClockBase;
+    private long _nativeClockStart;
+    private bool _nativeClockRunning;
+    private bool _useExternalInstrument;
     private bool _disposed;
 
-    public UnifiedPlaybackController(IScorePlaybackController score, string? ffmpegPath = null)
+    public UnifiedPlaybackController(IScorePlaybackController score, string? ffmpegPath = null,
+        IInstrumentPluginHost? instrumentHost = null)
+        : this(score, ffmpegPath, instrumentHost, new MciCommandDispatcher())
+    {
+    }
+
+    internal UnifiedPlaybackController(IScorePlaybackController score, string? ffmpegPath,
+        IInstrumentPluginHost? instrumentHost, IMciCommands mci)
     {
         _score = score;
+        _mci = mci;
+        _instrumentHost = instrumentHost;
         _audio = string.IsNullOrWhiteSpace(ffmpegPath) ? null : new FfmpegAudioPlayer(ffmpegPath);
         _preview.SnapshotChanged += OnPreviewChanged;
         _score.Changed += OnScoreChanged;
-        _timer = new Timer(_ => PublishTimedBackend(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+        // 进度目标 60 FPS；MIDI 音频事件由宿主音频线程调度，与此刷新定时器无关。
+        _timer = new Timer(_ => PublishTimedBackend(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1d / 60));
     }
 
     public event EventHandler<PlaybackSnapshot>? SnapshotChanged;
 
+    public double Volume
+    {
+        get => _audio?.Volume ?? 1;
+        set { if (_audio is not null) _audio.Volume = value; }
+    }
+
+    // 音源交接与播放/换曲共用操作锁；加载耗时不计入音乐时间线。
+    public async ValueTask LoadInstrumentAsync(InstrumentPluginInfo plugin, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (SequenceHost is null || _backend != PlaybackBackend.Native ||
+                _track?.Kind != MediaKind.Midi || _track.SourcePath is null)
+                return;
+            bool playing;
+            TimeSpan position;
+            lock (_nativeGate)
+            {
+                playing = _nativeState == PlaybackState.Playing;
+                position = ReadNativeClockPosition();
+                _nativePosition = position;
+                _nativeClockRunning = false;
+                _nativeState = PlaybackState.Paused;
+            }
+            // 先暂停旧插件；系统设备则必须成功关闭，不能只发送忽略错误的 stop。
+            if (HasExternalInstrument)
+                await SequenceHost.SetTransportAsync(false, position, cancellationToken).ConfigureAwait(false);
+            lock (_nativeGate) CloseNativeMediaCore();
+            _useExternalInstrument = true;
+            _externalSequenceReady = false;
+            PublishNativeTick();
+            await _instrumentHost!.LoadAsync(plugin, cancellationToken).ConfigureAwait(false);
+            await SequenceHost.LoadSequenceAsync(_track.SourcePath, cancellationToken).ConfigureAwait(false);
+            await SequenceHost.SetTransportAsync(playing, position, cancellationToken).ConfigureAwait(false);
+            _externalSequenceReady = true;
+            lock (_nativeGate)
+            {
+                _nativeState = playing ? PlaybackState.Playing : PlaybackState.Paused;
+                if (playing) StartNativeClock(position);
+            }
+            PublishNativeTick();
+        }
+        catch
+        {
+            // 激活失败时保持明确的暂停状态，不让视觉时间线继续走但没有声音。
+            lock (_nativeGate)
+            {
+                _nativeState = PlaybackState.Paused;
+                _nativeClockRunning = false;
+            }
+            // 失败后不自动恢复内置音源；插件未准备好时播放必须报错，不能静默走另一条路。
+            _externalSequenceReady = false;
+            // 命令取消也可能发生在宿主已开始播放之后，清理不能沿用已取消的令牌。
+            PublishNativeTick();
+            if (_useExternalInstrument && _instrumentHost is not null)
+                await _instrumentHost.UnloadAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        finally { _operationGate.Release(); }
+    }
+
     public PlaybackSnapshot Snapshot { get; private set; } =
         new(null, PlaybackState.Stopped, TimeSpan.Zero, TimeSpan.Zero);
+
+    public bool UseExternalInstrument => _useExternalInstrument;
 
     // 根据媒体类型选择真实音频/MIDI 播放、自动演奏或演示计时后端。
     public async ValueTask LoadAsync(
@@ -87,7 +177,30 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                 !string.IsNullOrWhiteSpace(track.SourcePath) &&
                 OperatingSystem.IsWindows())
             {
-                LoadNativeMedia(track, autoplay);
+                // 时长包含速度变化和尾部休止，不使用游戏乐谱筛选后的音符估算。
+                var data = await Task.Run(() => MidiSequenceReader.Read(track.SourcePath, cancellationToken), cancellationToken).ConfigureAwait(false);
+                track = track with { Duration = data.Duration };
+                _track = track;
+                if (_useExternalInstrument)
+                {
+                    if (!HasExternalInstrument)
+                        throw new InvalidOperationException("插件音源不可用，请重新加载音色。");
+                    await SequenceHost!.LoadSequenceAsync(track.SourcePath, cancellationToken).ConfigureAwait(false);
+                    _externalSequenceReady = true;
+                    LoadNativeMedia(track, false);
+                    await SequenceHost.SetTransportAsync(autoplay, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
+                    lock (_nativeGate)
+                    {
+                        _nativeState = autoplay ? PlaybackState.Playing : PlaybackState.Paused;
+                        if (autoplay) StartNativeClock(TimeSpan.Zero);
+                    }
+                    PublishNativeTick();
+                }
+                else
+                {
+                    _useExternalInstrument = false;
+                    LoadNativeMedia(track, autoplay);
+                }
                 return;
             }
 
@@ -116,8 +229,23 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                     PublishAudioTick();
                     break;
                 case PlaybackBackend.Native:
-                    Send($"play {MediaAlias}");
-                    _nativeState = PlaybackState.Playing;
+                    if (_nativeState == PlaybackState.Playing) break;
+                    if (_nativeDuration > TimeSpan.Zero && _nativePosition >= _nativeDuration)
+                        _nativePosition = TimeSpan.Zero;
+                    if (_useExternalInstrument)
+                        await RequireSequenceHost().SetTransportAsync(true, _nativePosition, cancellationToken).ConfigureAwait(false);
+                    lock (_nativeGate)
+                    {
+                        if (_nativeState != PlaybackState.Playing)
+                        {
+                            StartNativeClock(_nativePosition);
+                        }
+                        if (!_useExternalInstrument)
+                        {
+                            Send($"play {MediaAlias}");
+                        }
+                        _nativeState = PlaybackState.Playing;
+                    }
                     PublishNativeTick();
                     break;
                 default:
@@ -147,8 +275,21 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                     PublishAudioTick();
                     break;
                 case PlaybackBackend.Native:
-                    Send($"pause {MediaAlias}");
-                    _nativeState = PlaybackState.Paused;
+                    lock (_nativeGate)
+                    {
+                        if (_nativeState == PlaybackState.Playing)
+                        {
+                            _nativePosition = ReadNativeClockPosition();
+                        }
+                        if (!_useExternalInstrument)
+                        {
+                            Send($"pause {MediaAlias}");
+                        }
+                        _nativeState = PlaybackState.Paused;
+                        _nativeClockRunning = false;
+                    }
+                    if (HasExternalInstrument)
+                        await SequenceHost!.SetTransportAsync(false, _nativePosition, cancellationToken).ConfigureAwait(false);
                     PublishNativeTick();
                     break;
                 default:
@@ -181,11 +322,25 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                     PublishAudioTick();
                     break;
                 case PlaybackBackend.Native:
-                    var milliseconds = Math.Max(0, (long)bounded.TotalMilliseconds);
-                    Send($"seek {MediaAlias} to {milliseconds}");
-                    if (_nativeState == PlaybackState.Playing)
+                    if (_useExternalInstrument)
+                        await RequireSequenceHost().SetTransportAsync(_nativeState == PlaybackState.Playing, bounded, cancellationToken).ConfigureAwait(false);
+                    lock (_nativeGate)
                     {
-                        Send($"play {MediaAlias}");
+                        var milliseconds = Math.Max(0, (long)bounded.TotalMilliseconds);
+                        if (!_useExternalInstrument)
+                        {
+                            Send($"seek {MediaAlias} to {milliseconds}");
+                        }
+                        _nativePosition = bounded;
+                        if (_nativeState == PlaybackState.Playing)
+                        {
+                            StartNativeClock(bounded);
+                            if (!_useExternalInstrument) Send($"play {MediaAlias}");
+                        }
+                        else
+                        {
+                            _nativeClockRunning = false;
+                        }
                     }
                     PublishNativeTick();
                     break;
@@ -202,27 +357,40 @@ public sealed class UnifiedPlaybackController : IPlaybackController
 
     private void LoadNativeMedia(MusicTrack track, bool autoplay)
     {
-        _backend = PlaybackBackend.Native;
-        CloseNativeMedia();
-        var mediaType = track.Kind == MediaKind.Midi
-            ? "sequencer"
-            : Path.GetExtension(track.SourcePath!).Equals(".wav", StringComparison.OrdinalIgnoreCase)
-                ? "waveaudio"
-                : "mpegvideo";
-        var escapedPath = track.SourcePath!.Replace("\"", "\"\"");
-        Send($"open \"{escapedPath}\" type {mediaType} alias {MediaAlias}");
-        Send($"set {MediaAlias} time format milliseconds");
-        _nativeDuration = TimeSpan.FromMilliseconds(QueryLong($"status {MediaAlias} length"));
-        if (_nativeDuration <= TimeSpan.Zero)
+        lock (_nativeGate)
         {
+            _backend = PlaybackBackend.Native;
+            CloseNativeMediaCore();
+            // 插件模式完全不打开系统 sequencer，避免隐藏的第二个播放设备。
+            if (!_useExternalInstrument)
+            {
+                var escapedPath = track.SourcePath!.Replace("\"", "\"\"");
+                Send($"open \"{escapedPath}\" type sequencer alias {MediaAlias}");
+                _nativeOpened = true;
+                Send($"set {MediaAlias} time format milliseconds");
+            }
             _nativeDuration = track.Duration;
-        }
+            if (_nativeDuration <= TimeSpan.Zero && _nativeOpened)
+            {
+                _nativeDuration = TimeSpan.FromMilliseconds(QueryLong($"status {MediaAlias} length"));
+            }
 
-        _nativeState = autoplay ? PlaybackState.Playing : PlaybackState.Paused;
-        Snapshot = new PlaybackSnapshot(track, _nativeState, TimeSpan.Zero, _nativeDuration);
-        if (autoplay)
-        {
-            Send($"play {MediaAlias}");
+            _nativePosition = TimeSpan.Zero;
+            _nativeClockBase = TimeSpan.Zero;
+            _nativeState = autoplay ? PlaybackState.Playing : PlaybackState.Paused;
+            _nativeClockRunning = autoplay;
+            if (autoplay)
+            {
+                _nativeClockStart = Stopwatch.GetTimestamp();
+            }
+            Snapshot = new PlaybackSnapshot(track, _nativeState, TimeSpan.Zero, _nativeDuration);
+            if (autoplay)
+            {
+                if (!_useExternalInstrument)
+                {
+                    Send($"play {MediaAlias}");
+                }
+            }
         }
         SnapshotChanged?.Invoke(this, Snapshot);
     }
@@ -238,7 +406,11 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                 _audio?.Stop();
                 break;
             case PlaybackBackend.Native:
+                if (HasExternalInstrument)
+                    await SequenceHost!.SetTransportAsync(false, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
+                _externalSequenceReady = false;
                 CloseNativeMedia();
+                _nativeState = PlaybackState.Stopped;
                 break;
             case PlaybackBackend.Preview:
                 await _preview.PauseAsync(cancellationToken).ConfigureAwait(false);
@@ -255,11 +427,27 @@ public sealed class UnifiedPlaybackController : IPlaybackController
                 return;
             }
 
-            var position = TimeSpan.FromMilliseconds(QueryLong($"status {MediaAlias} position", false));
+            TimeSpan position;
+            lock (_nativeGate)
+            {
+                // MCI sequencer 在暂停/停止后经常返回 0，保留我们记录的暂停位置。
+                if (!_nativeClockRunning && _nativeState != PlaybackState.Playing)
+                {
+                    position = _nativePosition;
+                }
+                else
+                {
+                    // MCI sequencer 的 status position 可能滞后或使用驱动私有单位，
+                    // 播放期间只使用单调时钟，避免暂停时位置被回写到更早的位置。
+                    position = ReadNativeClockPosition();
+                }
+                _nativePosition = position;
+            }
             if (_nativeDuration > TimeSpan.Zero && position >= _nativeDuration)
             {
                 position = _nativeDuration;
                 _nativeState = PlaybackState.Stopped;
+                _nativeClockRunning = false;
             }
 
             Snapshot = new PlaybackSnapshot(_track, _nativeState, position, _nativeDuration);
@@ -334,42 +522,59 @@ public sealed class UnifiedPlaybackController : IPlaybackController
         SnapshotChanged?.Invoke(this, Snapshot);
     }
 
-    private static void Send(string command, bool throwOnError = true)
+    private void Send(string command) => _mci.Execute(command);
+
+    private long QueryLong(string command)
     {
-        var error = MciSendString(command, null, 0, IntPtr.Zero);
-        if (error != 0 && throwOnError)
+        return long.TryParse(_mci.Execute(command), out var value) ? value : 0;
+    }
+
+    // 插件加载失败时不允许恢复过期时间线，也不回退到系统音源。
+    private IMidiSequenceHost RequireSequenceHost() => HasExternalInstrument && _externalSequenceReady
+        ? SequenceHost!
+        : throw new InvalidOperationException("插件音源尚未准备好，请重新加载音色。");
+
+    private void CloseNativeMedia()
+    {
+        lock (_nativeGate)
         {
-            var message = new StringBuilder(256);
-            MciGetErrorString(error, message, message.Capacity);
-            throw new IOException($"媒体播放失败：{message}");
+            _nativeClockRunning = false;
+            CloseNativeMediaCore();
         }
     }
 
-    private static long QueryLong(string command, bool throwOnError = true)
+    private void StartNativeClock(TimeSpan position)
     {
-        var buffer = new StringBuilder(64);
-        var error = MciSendString(command, buffer, buffer.Capacity, IntPtr.Zero);
-        if (error != 0)
-        {
-            if (throwOnError)
-            {
-                var message = new StringBuilder(256);
-                MciGetErrorString(error, message, message.Capacity);
-                throw new IOException($"媒体状态读取失败：{message}");
-            }
-            return 0;
-        }
-        return long.TryParse(buffer.ToString(), out var value) ? value : 0;
+        _nativePosition = position;
+        _nativeClockBase = position;
+        _nativeClockStart = Stopwatch.GetTimestamp();
+        _nativeClockRunning = true;
     }
 
-    private static void CloseNativeMedia()
+    private TimeSpan ReadNativeClockPosition()
     {
-        if (!OperatingSystem.IsWindows())
+        if (!_nativeClockRunning)
         {
-            return;
+            return _nativePosition;
         }
-        Send($"stop {MediaAlias}", false);
-        Send($"close {MediaAlias}", false);
+
+        var elapsedTicks = Stopwatch.GetTimestamp() - _nativeClockStart;
+        return _nativeClockBase + TimeSpan.FromSeconds(elapsedTicks / (double)Stopwatch.Frequency);
+    }
+
+    private void CloseNativeMediaCore()
+    {
+        if (!_nativeOpened) return;
+        // close 本身停止播放并释放设备；失败时保留标记，阻止新音源启动并允许重试。
+        try { Send($"close {MediaAlias}"); }
+        catch (IOException closeError)
+        {
+            // 设备释放失败也先尝试静音，保留原始错误交给界面显示。
+            try { Send($"pause {MediaAlias}"); }
+            catch (IOException pauseError) { throw new AggregateException(closeError, pauseError); }
+            throw;
+        }
+        _nativeOpened = false;
     }
 
     public void Dispose()
@@ -384,15 +589,9 @@ public sealed class UnifiedPlaybackController : IPlaybackController
         _score.Changed -= OnScoreChanged;
         _preview.Dispose();
         _audio?.Dispose();
-        CloseNativeMedia();
+        try { CloseNativeMedia(); }
+        finally { _mci.Dispose(); }
     }
-
-    [DllImport("winmm.dll", CharSet = CharSet.Unicode, EntryPoint = "mciSendStringW")]
-    private static extern int MciSendString(string command, StringBuilder? returnValue, int returnLength, IntPtr callback);
-
-    [DllImport("winmm.dll", CharSet = CharSet.Unicode, EntryPoint = "mciGetErrorStringW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool MciGetErrorString(int errorCode, StringBuilder errorText, int errorTextSize);
 
     private enum PlaybackBackend
     {
