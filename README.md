@@ -20,7 +20,7 @@
 
 > [!IMPORTANT]
 > 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成 <br>
-> 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能，演奏还在开发中
+> 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能
 
 > **使用演奏辅助时，请右键程序选择“以管理员身份运行”。** 向以管理员权限运行的游戏发送按键时，猫橘咪音乐也需要管理员权限。普通音乐播放、歌词和本地媒体管理可在普通权限下使用。
 
