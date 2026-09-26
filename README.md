@@ -20,7 +20,8 @@
 
 > [!IMPORTANT]
 > 当前版本处于持续迁移与开发阶段，专业半 DAW、视觉识别和部分 VST3 高级能力尚未完成 <br>
-> 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能
+> 目前舍弃了部分[windhide/SkyMusicPlay-for-Windows](https://github.com/windhide/SkyMusicPlay-for-Windows) 功能<br>
+> 本软件不支持任何宏脚本与按键宏功能
 
 > **使用演奏辅助时，请右键程序选择“以管理员身份运行”。** 向以管理员权限运行的游戏发送按键时，猫橘咪音乐也需要管理员权限。普通音乐播放、歌词和本地媒体管理可在普通权限下使用。
 
@@ -70,7 +71,7 @@ Intel 与 AMD 处理器共用能力驱动的执行路径，不再按 CPU 品牌�
 - Fluent 风格主窗口、页面导航、全宽 MiniPlayer 和沉浸式播放页
 - 发现、媒体库、收藏、最近播放、任务和设置页面
 - 独立桌面歌词窗口与云端歌词缓存
-- 音频、MIDI、TXT/JSON 乐谱和键盘宏导入入口
+- 音频、MIDI、TXT/JSON 乐谱
 - 读取音频内嵌封面、歌曲名、歌手、专辑与作者，保存到 SQLite 媒体库
 - 播放队列支持“添加到下一首”和移除，进度条支持点击定位与拖动预览
 - 单句透明桌面歌词、悬停控制栏、字体/描边/填充颜色与透明度设置
@@ -84,7 +85,6 @@ Intel 与 AMD 处理器共用能力驱动的执行路径，不再按 CPU 品牌�
 - 标准 MIDI 导入导出与 MIDI 21-108 的 88 键数据模型
 - 高精度时间线、暂停、继续、停止、跳转、速度、实时间隔和按键释放延迟
 - Windows 扫描码输出、目标窗口选择与持久化自定义键位映射
-- 安全的旧版键盘宏导入，拒绝执行程序、Shell 或鼠标命令
 
 ### 编谱工作区
 
