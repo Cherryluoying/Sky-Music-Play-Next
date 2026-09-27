@@ -28,6 +28,10 @@
           </StackPanel>
           <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="sky-caption" VerticalAlignment="Center" />
         </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <ComboBox ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" MinWidth="130" />
+          <Button Content="{Binding Playback.PlaybackModeText}" Command="{Binding Playback.CyclePlaybackModeCommand}" ToolTip.Tip="切换歌单循环、单曲循环、随机播放" />
+        </StackPanel>
         <Grid ColumnDefinitions="36,50,*,130,52,40,40" Margin="0,2,0,0">
           <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />

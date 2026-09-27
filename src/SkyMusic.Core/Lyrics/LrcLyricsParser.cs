@@ -32,7 +32,12 @@ public static partial class LrcLyricsParser
                 // LRC 元数据不是歌词，纯文本文件则作为无时间歌词处理。
                 if (!Regex.IsMatch(line, @"^\[[a-zA-Z]+:.*\]$"))
                 {
-                    plainLines.Add(line);
+                    if (timedLines.Count > 0)
+                    {
+                        var previous = timedLines[^1];
+                        timedLines[^1] = previous with { Translation = string.IsNullOrEmpty(previous.Translation) ? line : previous.Translation + "\n" + line };
+                    }
+                    else plainLines.Add(line);
                 }
                 continue;
             }
@@ -63,7 +68,7 @@ public static partial class LrcLyricsParser
 
         if (timedLines.Count > 0)
         {
-            return timedLines.OrderBy(line => line.Timestamp).ToArray();
+            return LyricLines.Normalize(timedLines);
         }
 
         // 普通 TXT 没有时间信息时提供可用的默认时间轴，用户仍可点击定位。

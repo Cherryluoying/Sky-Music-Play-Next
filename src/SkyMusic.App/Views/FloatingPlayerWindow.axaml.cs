@@ -5,6 +5,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using SkyMusic.App.ViewModels;
 using SkyMusic.App.Services;
+using Avalonia.VisualTree;
+using System.Runtime.InteropServices;
 
 namespace SkyMusic.App.Views;
 
@@ -18,6 +20,7 @@ public sealed partial class FloatingPlayerWindow : Window
     private bool _searchInput;
     private int _sectionRequest;
     private Point _ballOffset;
+    private nint _previousForeground;
     public bool IsExpanded => Bubble.IsVisible;
 
     // 无参构造仅供 Avalonia 资源加载与设计器，运行时由主窗口注入共享播放状态。
@@ -28,8 +31,10 @@ public sealed partial class FloatingPlayerWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         Win32Properties.AddWndProcHookCallback(this, WindowMessage);
+        AddHandler(PointerPressedEvent, Input_OnPointerPressed, RoutingStrategies.Tunnel);
         Opened += (_, _) =>
         {
+            SetInputMode(false);
             if (Screens.ScreenFromWindow(this) is not { } screen) return;
             Position = new PixelPoint(screen.WorkingArea.Right - (int)(88 * screen.Scaling),
                 screen.WorkingArea.Y + (int)(screen.WorkingArea.Height * .6));
@@ -90,7 +95,7 @@ public sealed partial class FloatingPlayerWindow : Window
 
     public void Collapse()
     {
-        _searchInput = false;
+        SetInputMode(false);
         SetExpanded(false);
     }
 
@@ -100,7 +105,7 @@ public sealed partial class FloatingPlayerWindow : Window
         var request = ++_sectionRequest;
         if (!await _viewModel.SelectSectionAsync(section)) return;
         if (_closed || !IsExpanded || request != _sectionRequest) return;
-        _searchInput = _viewModel.IsSearch;
+        SetInputMode(_viewModel.IsSearch);
         if (_searchInput) { Activate(); SearchBox.Focus(); }
     }
 
@@ -112,7 +117,7 @@ public sealed partial class FloatingPlayerWindow : Window
         if (!await _viewModel.SelectSectionAsync("search")) return;
         if (!_closed && IsExpanded && _viewModel.IsSearch)
         {
-            _searchInput = true;
+            SetInputMode(true);
             Activate();
             SearchBox.Focus();
         }
@@ -121,13 +126,13 @@ public sealed partial class FloatingPlayerWindow : Window
     private void Track_OnClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Control { DataContext: TrackItemViewModel track }) return;
-        _searchInput = false;
+        SetInputMode(false);
         track.PlayCommand.Execute(null);
     }
 
     private void Transport_OnClick(object? sender, RoutedEventArgs e)
     {
-        _searchInput = false;
+        SetInputMode(false);
         var playback = _viewModel.Playback;
         var command = (sender as Control)?.Tag?.ToString() switch
         {
@@ -139,6 +144,46 @@ public sealed partial class FloatingPlayerWindow : Window
     }
 
     private void Collapse_OnClick(object? sender, RoutedEventArgs e) => Collapse();
+
+    // 禁止整个 HWND 被普通鼠标操作激活，覆盖拖动、布局调整和控件内部激活路径。
+    // 只有搜索/数值文字输入临时解除；结束输入后把前台还给之前的游戏窗口。
+    private void SetInputMode(bool enabled)
+    {
+        _searchInput = enabled;
+        if (!OperatingSystem.IsWindows() || TryGetPlatformHandle()?.Handle is not { } hwnd) return;
+        var foreground = GetForegroundWindow();
+        if (enabled && foreground != hwnd) _previousForeground = foreground;
+        var style = GetWindowLongPtrW(hwnd, -20).ToInt64();
+        SetWindowLongPtrW(hwnd, -20, new nint(enabled ? style & ~0x08000000L : style | 0x08000000L));
+        if (!enabled)
+        {
+            FocusManager?.Focus(null);
+            if (foreground == hwnd && _previousForeground != 0 && IsWindow(_previousForeground)) SetForegroundWindow(_previousForeground);
+        }
+    }
+
+    private async void Input_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_searchInput || e.Source is not Visual source) return;
+        var input = source as TextBox ?? source.GetVisualAncestors().OfType<TextBox>().FirstOrDefault();
+        if (input is null || input == SearchBox) return;
+        e.Handled = true;
+        try
+        {
+            await _viewModel.Playback.PauseForTextInputAsync();
+            if (_closed || !IsExpanded) return;
+            SetInputMode(true);
+            Activate();
+            input.Focus();
+        }
+        catch (Exception) { /* 控制器暂停失败时保持不激活，避免演奏按键进入文本框。 */ }
+    }
+
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern nint GetWindowLongPtrW(nint hwnd, int index);
+    [DllImport("user32.dll")] private static extern nint SetWindowLongPtrW(nint hwnd, int index, nint value);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(nint hwnd);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsWindow(nint hwnd);
 
     private void Ball_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {

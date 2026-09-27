@@ -1,5 +1,6 @@
 // 模块：SkyMusic.App 页面视图 PlayerView.axaml
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using SkyMusic.App.ViewModels;
@@ -8,7 +9,21 @@ namespace SkyMusic.App.Views;
 
 public sealed partial class PlayerView : UserControl
 {
+    public static readonly StyledProperty<bool> IsFullScreenProperty = AvaloniaProperty.Register<PlayerView, bool>(nameof(IsFullScreen));
+    public bool IsFullScreen { get => GetValue(IsFullScreenProperty); set => SetValue(IsFullScreenProperty, value); }
     public PlayerView() => InitializeComponent();
+
+    // RowDefinitions 不是 Avalonia 属性；只在模式切换时调整固定预留行，悬停播放器不改变行高。
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != IsFullScreenProperty) return;
+        Classes.Set("fullscreen", IsFullScreen);
+        if (this.FindControl<Grid>("PlayerLayout") is not { } layout) return;
+        layout.RowDefinitions[0].Height = new GridLength(IsFullScreen ? 0 : 44);
+        layout.RowDefinitions[1].Height = new GridLength(IsFullScreen ? 0 : 58);
+        layout.RowDefinitions[3].Height = new GridLength(IsFullScreen ? 0 : 88);
+    }
 
     // 列宽只由窗口尺寸决定，长歌词或手动滚动不会重新挤压封面与中间留白。
     private void LyricsColumns_OnSizeChanged(object? sender, SizeChangedEventArgs e)

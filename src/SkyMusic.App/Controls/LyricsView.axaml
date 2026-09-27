@@ -48,6 +48,7 @@
           <DataTemplate DataType="vm:LyricLineViewModel">
             <Button Classes="lyric-line" Click="Timeline_OnClick">
               <Grid ColumnDefinitions="*,52" MinWidth="0">
+                <StackPanel Spacing="6">
                 <TextBlock Classes="lyric-copy" Text="{Binding Text}" Foreground="White"
                            FontSize="{Binding FontSize}" FontWeight="{Binding LineFontWeight}"
                            Opacity="{Binding Opacity}" TextWrapping="Wrap" TextAlignment="Left"
@@ -66,6 +67,9 @@
                     <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.36" /></Transitions>
                   </TextBlock.Transitions>
                 </TextBlock>
+                <TextBlock Text="{Binding Translation}" IsVisible="{Binding HasTranslation}" FontSize="16" FontWeight="Normal"
+                           Foreground="#C9FFFFFF" Opacity="{Binding Opacity}" TextWrapping="Wrap" />
+                </StackPanel>
                 <TextBlock Grid.Column="1" Classes="lyric-time" Text="{Binding TimestampText}"
                            HorizontalAlignment="Right" VerticalAlignment="Center">
                   <TextBlock.Transitions>

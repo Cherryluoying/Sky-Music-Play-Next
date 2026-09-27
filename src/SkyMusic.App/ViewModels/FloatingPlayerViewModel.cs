@@ -18,6 +18,9 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
     private bool _isLoading;
     private string? _error;
     private int _sectionVersion;
+    private int _categoryIndex;
+    public IReadOnlyList<string> Categories => MediaCategoryFilter.Labels;
+    public int CategoryIndex { get => _categoryIndex; set { if (SetProperty(ref _categoryIndex, value)) Filter(); } }
 
     public FloatingPlayerViewModel(IMediaLibraryStore store, CoverImageService covers, PlaybackViewModel playback)
     {
@@ -89,13 +92,14 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
     {
         var query = IsSearch ? SearchText.Trim() : string.Empty;
         var records = _records.Where(record => !IsFavorites || record.IsFavorite)
+            .Where(record => MediaCategoryFilter.Matches(record.Track.Kind, CategoryIndex))
             .Where(record => string.IsNullOrEmpty(query) || new[] { record.Track.Title, record.Track.Artist, record.Track.Album, record.Track.Author }
                 .Any(text => text?.Contains(query, StringComparison.OrdinalIgnoreCase) == true))
             .GroupBy(record => record.Track.Id, StringComparer.OrdinalIgnoreCase).Select(group => group.First());
         Tracks.Clear();
         foreach (var record in records)
             Tracks.Add(new TrackItemViewModel(record.Track, _covers.GetCover(record.Track.CoverSource),
-                item => Playback.PlayTrack(item), isFavorite: record.IsFavorite));
+                item => Playback.PlayFromCollection(item, Tracks), isFavorite: record.IsFavorite));
         OnPropertyChanged(nameof(IsEmpty));
     }
 

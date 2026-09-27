@@ -19,6 +19,12 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     private string _searchText = string.Empty;
     private bool _isLoading;
     private string? _statusText;
+    private int _categoryIndex;
+    private int _favoriteCategoryIndex;
+    public IReadOnlyList<string> Categories => MediaCategoryFilter.Labels;
+    public PlaybackViewModel Playback => _playback;
+    public int CategoryIndex { get => _categoryIndex; set { if (SetProperty(ref _categoryIndex, value)) ApplyFilter(); } }
+    public int FavoriteCategoryIndex { get => _favoriteCategoryIndex; set { if (SetProperty(ref _favoriteCategoryIndex, value)) ApplyFilter(); } }
 
     public LibraryViewModel(
         IMediaLibraryStore store,
@@ -134,8 +140,8 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
         var filtered = string.IsNullOrEmpty(query)
             ? _records
             : _records.Where(record => Matches(record.Track, query)).ToList();
-        Replace(Tracks, filtered.Select((record, index) => CreateItem(record, index + 1)));
-        Replace(FavoriteTracks, filtered.Where(record => record.IsFavorite).Select((record, index) => CreateItem(record, index + 1)));
+        Replace(Tracks, filtered.Where(record => MediaCategoryFilter.Matches(record.Track.Kind, CategoryIndex)).Select((record, index) => CreateItem(record, index + 1, Tracks)));
+        Replace(FavoriteTracks, filtered.Where(record => record.IsFavorite && MediaCategoryFilter.Matches(record.Track.Kind, FavoriteCategoryIndex)).Select((record, index) => CreateItem(record, index + 1, FavoriteTracks)));
         Replace(RecentTracks, filtered
             .Where(record => record.LastPlayedAt is not null)
             .OrderByDescending(record => record.LastPlayedAt)
@@ -147,10 +153,10 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
             .Select(group => CreateItem(group.First())));
     }
 
-    private TrackItemViewModel CreateItem(StoredMediaTrack record, int index = 0) => new(
+    private TrackItemViewModel CreateItem(StoredMediaTrack record, int index = 0, IEnumerable<TrackItemViewModel>? context = null) => new(
         record.Track,
         _covers.GetCover(record.Track.CoverSource),
-        item => _playback.PlayTrack(item),
+        item => { if (context is null) _playback.PlayTrack(item); else _playback.PlayFromCollection(item, context); },
         item => _ = ToggleFavoriteAsync(item),
         record.IsFavorite,
         index,

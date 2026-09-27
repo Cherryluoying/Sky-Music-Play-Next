@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform;
 using System.ComponentModel;
 using Avalonia.VisualTree;
+using Avalonia.Threading;
 using SkyMusic.App.Controls;
 using SkyMusic.App.ViewModels;
 
@@ -18,6 +19,19 @@ public sealed partial class MainWindow : Window
     private DesktopLyricsWindow? _desktopLyricsWindow;
     private WorkbenchWindow? _workbenchWindow;
     private FloatingPlayerWindow? _floatingWindow;
+    public static readonly StyledProperty<bool> IsLyricsFullScreenProperty =
+        AvaloniaProperty.Register<MainWindow, bool>(nameof(IsLyricsFullScreen));
+    public bool IsLyricsFullScreen { get => GetValue(IsLyricsFullScreenProperty); private set => SetValue(IsLyricsFullScreenProperty, value); }
+    public static readonly StyledProperty<string> LyricsFullScreenGlyphProperty =
+        AvaloniaProperty.Register<MainWindow, string>(nameof(LyricsFullScreenGlyph), "\uE740");
+    public string LyricsFullScreenGlyph { get => GetValue(LyricsFullScreenGlyphProperty); private set => SetValue(LyricsFullScreenGlyphProperty, value); }
+    private WindowState _beforeFullScreen;
+    private PixelPoint _beforeFullScreenPosition;
+    private Size _beforeFullScreenSize;
+    private CornerRadius _beforeFullScreenCorner;
+    private bool _pointerAtPlayer;
+    private IPointer? _fullscreenPointer;
+    private readonly DispatcherTimer _hidePlayerTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
 
     public MainWindow()
     {
@@ -25,21 +39,102 @@ public sealed partial class MainWindow : Window
         DataContextChanged += OnDataContextChanged;
         Closed += OnClosed;
         Opened += (_, _) => UpdateFloatingWindow();
+        AddHandler(KeyDownEvent, FullScreen_OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerMovedEvent, FullScreen_OnPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        PointerExited += (_, _) => { if (IsLyricsFullScreen) { _pointerAtPlayer = false; _hidePlayerTimer.Start(); } };
+        _hidePlayerTimer.Tick += (_, _) =>
+        {
+            // 滑块拖动和气泡操作期间保留播放器，避免控制区消失中断交互。
+            if (_pointerAtPlayer || _fullscreenPointer?.Captured is not null ||
+                MiniPlayer.GetVisualDescendants().OfType<Button>().Any(button => button.Flyout?.IsOpen == true)) return;
+            MiniPlayer.IsVisible = !IsLyricsFullScreen;
+            _hidePlayerTimer.Stop();
+        };
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == WindowStateProperty && IsLyricsFullScreen && WindowState != WindowState.FullScreen)
+                ExitLyricsFullScreen();
+        };
+    }
+
+    // 使用原生全屏状态覆盖任务栏；保留原来的普通/最大化状态，不创建第二套播放器。
+    public void ToggleLyricsFullScreen()
+    {
+        if (IsLyricsFullScreen) { ExitLyricsFullScreen(); return; }
+        if (_viewModel?.Playback is not { HasTrack: true, ShowsLyrics: true }) return;
+        _viewModel.Playback.OpenPlayerCommand.Execute(null);
+        _beforeFullScreen = WindowState;
+        _beforeFullScreenPosition = Position;
+        _beforeFullScreenSize = ClientSize;
+        _beforeFullScreenCorner = ShellBorder.CornerRadius;
+        IsLyricsFullScreen = true;
+        LyricsFullScreenGlyph = "\uE73F";
+        TitleChrome.IsVisible = false;
+        ShellBorder.CornerRadius = default;
+        foreach (var grip in this.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("resize-grip"))) grip.IsVisible = false;
+        _pointerAtPlayer = false;
+        MiniPlayer.IsVisible = false;
+        WindowState = WindowState.FullScreen;
+    }
+
+    private void ExitLyricsFullScreen()
+    {
+        if (!IsLyricsFullScreen) return;
+        IsLyricsFullScreen = false;
+        LyricsFullScreenGlyph = "\uE740";
+        _hidePlayerTimer.Stop();
+        _fullscreenPointer = null;
+        TitleChrome.IsVisible = true;
+        MiniPlayer.IsVisible = true;
+        ShellBorder.CornerRadius = _beforeFullScreenCorner;
+        foreach (var grip in this.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("resize-grip"))) grip.IsVisible = true;
+        WindowState = _beforeFullScreen;
+        if (_beforeFullScreen == WindowState.Normal)
+        {
+            Width = _beforeFullScreenSize.Width;
+            Height = _beforeFullScreenSize.Height;
+            Position = _beforeFullScreenPosition;
+        }
+    }
+
+    private void FullScreen_OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (IsLyricsFullScreen && e.Key == Key.Escape) { ExitLyricsFullScreen(); e.Handled = true; }
+    }
+
+    private void FullScreen_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!IsLyricsFullScreen) return;
+        _fullscreenPointer = e.Pointer;
+        var point = e.GetPosition(this);
+        _pointerAtPlayer = point.Y >= ClientSize.Height - 104 && point.Y <= ClientSize.Height;
+        if (_pointerAtPlayer) { _hidePlayerTimer.Stop(); MiniPlayer.IsVisible = true; }
+        else if (MiniPlayer.IsVisible && !_hidePlayerTimer.IsEnabled) _hidePlayerTimer.Start();
+    }
+
+    private void FullScreenContext_OnChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (IsLyricsFullScreen && (_viewModel?.IsPlayerVisible != true || _viewModel.Playback.ShowsLyrics != true)) ExitLyricsFullScreen();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_viewModel is not null)
         {
+            _viewModel.PropertyChanged -= FullScreenContext_OnChanged;
+            _viewModel.Playback.PropertyChanged -= FullScreenContext_OnChanged;
             _viewModel.Playback.DesktopLyricsVisibilityChanged -= OnDesktopLyricsVisibilityChanged;
             _viewModel.OpenWorkbenchRequested -= OnOpenWorkbenchRequested;
             _viewModel.Settings.PropertyChanged -= OnSettingsChanged;
         }
 
         CloseFloatingWindow();
+        ExitLyricsFullScreen();
         _viewModel = DataContext as MainWindowViewModel;
         if (_viewModel is not null)
         {
+            _viewModel.PropertyChanged += FullScreenContext_OnChanged;
+            _viewModel.Playback.PropertyChanged += FullScreenContext_OnChanged;
             _viewModel.Playback.DesktopLyricsVisibilityChanged += OnDesktopLyricsVisibilityChanged;
             _viewModel.OpenWorkbenchRequested += OnOpenWorkbenchRequested;
             _viewModel.Settings.PropertyChanged += OnSettingsChanged;
@@ -196,8 +291,11 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _hidePlayerTimer.Stop();
         if (_viewModel is not null)
         {
+            _viewModel.PropertyChanged -= FullScreenContext_OnChanged;
+            _viewModel.Playback.PropertyChanged -= FullScreenContext_OnChanged;
             _viewModel.Playback.DesktopLyricsVisibilityChanged -= OnDesktopLyricsVisibilityChanged;
             _viewModel.OpenWorkbenchRequested -= OnOpenWorkbenchRequested;
             _viewModel.Settings.PropertyChanged -= OnSettingsChanged;

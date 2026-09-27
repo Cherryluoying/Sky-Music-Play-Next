@@ -303,9 +303,11 @@ public sealed class TasksViewModel : ObservableObject, IDisposable
     private Task ChangeTimingAsync(int intervalDelta, int releaseDelayDelta)
     {
         var current = _controller.Snapshot.Timing;
-        var timing = new ScoreTimingSettings(
-            Math.Clamp(current.IntervalAdjustmentMilliseconds + intervalDelta, -200, 500),
-            Math.Clamp(current.KeyReleaseDelayMilliseconds + releaseDelayDelta, -200, 1_000));
+        var timing = current with
+        {
+            IntervalAdjustmentMilliseconds = Math.Clamp(current.IntervalAdjustmentMilliseconds + intervalDelta, -200, 500),
+            KeyReleaseDelayMilliseconds = Math.Clamp(current.KeyReleaseDelayMilliseconds + releaseDelayDelta, -200, 1_000)
+        };
         return _controller.SetTimingAsync(timing).AsTask();
     }
 

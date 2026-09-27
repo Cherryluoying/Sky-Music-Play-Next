@@ -23,6 +23,7 @@ public sealed class DesktopLyricText : Control
 
     public string Text => _text;
     public double Progress => _progress;
+    public double FontScale { get; set; } = 1;
 
     // 只显示当前句，长句整体缩放到窗口宽度，不换行、不显示下一句。
     public void SetFrame(string text, double progress)
@@ -38,8 +39,8 @@ public sealed class DesktopLyricText : Control
 
     public void ApplyAppearance(DesktopLyricsAppearance appearance)
     {
-        if (_fontSize != appearance.FontSize) _geometry = null;
-        _fontSize = appearance.FontSize;
+        if (_fontSize != appearance.FontSize * FontScale) _geometry = null;
+        _fontSize = appearance.FontSize * FontScale;
         _outlineWidth = appearance.OutlineWidth;
         _textBrush = appearance.TextColor.Brush;
         _fillBrush = appearance.FillColor.Brush;

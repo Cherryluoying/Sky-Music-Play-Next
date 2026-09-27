@@ -4,6 +4,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:SkyMusic.App.Controls">
   <UserControl.Styles>
+    <!-- 全屏只扩展内容舞台；底部播放器浮现不触发布局重排。 -->
+    <Style Selector=":is(UserControl).fullscreen Grid#PlayerToolbar"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector=":is(UserControl).fullscreen TextBlock.song-metadata"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector=":is(UserControl).fullscreen StackPanel.empty-lyrics"><Setter Property="IsVisible" Value="False" /></Style>
     <!-- 沉浸背景中的操作图标在普通、悬停和按下状态都保持足够对比度。 -->
     <Style Selector="Button.immersive-icon">
       <Setter Property="Foreground" Value="White" />
@@ -41,8 +45,8 @@
     </Border>
 
     <!-- 首尾预留自绘标题栏和 MiniPlayer，高斯背景会连续铺到窗口边缘。 -->
-    <Grid RowDefinitions="44,58,*,88">
-      <Grid Grid.Row="1" Margin="26,0" ColumnDefinitions="Auto,*,Auto,Auto">
+    <Grid x:Name="PlayerLayout" RowDefinitions="44,58,*,88">
+      <Grid x:Name="PlayerToolbar" Grid.Row="1" Margin="26,0" ColumnDefinitions="Auto,*,Auto,Auto">
         <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon"
                 Command="{Binding DataContext.ClosePlayerCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                 Content="&#xE72B;" ToolTip.Tip="返回" Foreground="White"
@@ -92,14 +96,15 @@
           </StackPanel>
 
           <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" VerticalAlignment="Stretch" MinWidth="0" ClipToBounds="True">
-            <TextBlock Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
+            <TextBlock Classes="song-metadata" Text="{Binding CurrentItem.Title, FallbackValue=尚未选择歌曲}"
                        Foreground="White" FontSize="34" FontWeight="Bold"
                        TextWrapping="Wrap" MaxLines="2" />
-            <TextBlock Grid.Row="1" Text="{Binding CurrentItem.ArtistAlbumText, FallbackValue=猫橘咪音乐}"
+            <TextBlock Classes="song-metadata" Grid.Row="1" Text="{Binding CurrentItem.ArtistAlbumText, FallbackValue=猫橘咪音乐}"
                        Margin="0,8,0,22" Foreground="#B8FFFFFF" FontSize="14" TextTrimming="CharacterEllipsis" />
             <Grid Grid.Row="2" MinWidth="0" ClipToBounds="True">
               <controls:LyricsView IsVisible="{Binding HasLyrics}" />
-              <StackPanel IsVisible="{Binding HasNoLyrics}" HorizontalAlignment="Left"
+              <Grid IsVisible="{Binding HasNoLyrics}">
+              <StackPanel Classes="empty-lyrics" HorizontalAlignment="Left"
                           VerticalAlignment="Center" Spacing="13" MaxWidth="360">
                 <TextBlock Text="暂无歌词" Foreground="White" FontSize="24" FontWeight="SemiBold" />
                 <TextBlock Text="导入 LRC 或 TXT 后，可按时间轴滚动和跳转。"
@@ -112,6 +117,7 @@
                   </StackPanel>
                 </Button>
               </StackPanel>
+              </Grid>
             </Grid>
           </Grid>
         </Grid>

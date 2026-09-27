@@ -26,7 +26,10 @@ public sealed partial class LibraryView : UserControl
                 new FilePickerFileType("猫橘咪音乐媒体")
                 {
                     Patterns = ["*.txt", "*.json", "*.skysheet", "*.mid", "*.midi", "*.mp3", "*.wav", "*.flac", "*.m4a", "*.aac", "*.ogg"]
-                }
+                },
+                new FilePickerFileType("乐谱") { Patterns = ["*.txt", "*.json", "*.skysheet"] },
+                new FilePickerFileType("音乐") { Patterns = ["*.mp3", "*.wav", "*.flac", "*.m4a", "*.aac", "*.ogg"] },
+                new FilePickerFileType("MIDI") { Patterns = ["*.mid", "*.midi"] }
             ]
         });
         var paths = files.Select(file => file.TryGetLocalPath()).OfType<string>().ToArray();

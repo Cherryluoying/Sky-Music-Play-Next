@@ -51,6 +51,7 @@ public sealed class TrackItemViewModel : ObservableObject
     public string Author => string.IsNullOrWhiteSpace(Track.Author) ? Artist : Track.Author;
 
     public MediaKind Kind => Track.Kind;
+    public string KindText => Kind switch { MediaKind.Score => "乐谱", MediaKind.Midi => "MIDI", _ => "音乐" };
 
     public bool IsFavorite
     {

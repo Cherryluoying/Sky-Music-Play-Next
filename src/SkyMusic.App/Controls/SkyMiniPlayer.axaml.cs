@@ -10,6 +10,13 @@ public sealed partial class SkyMiniPlayer : UserControl
 {
     public SkyMiniPlayer() => InitializeComponent();
 
+    // 全屏属于窗口展示状态，不修改音频或演奏状态。
+    private void Fullscreen_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is SkyMusic.App.Views.MainWindow window) window.ToggleLyricsFullScreen();
+        e.Handled = true;
+    }
+
     private void Progress_OnScrubStarted(object? sender, EventArgs e)
         => (DataContext as PlaybackViewModel)?.BeginScrub();
 

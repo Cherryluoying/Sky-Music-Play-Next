@@ -167,7 +167,10 @@
       <Button x:Name="CloseButton" Theme="{StaticResource DesktopBubble}" Content="&#xE711;"
               Click="Close_OnClick" ToolTip.Tip="关闭桌面歌词，继续播放" AutomationProperties.Name="关闭桌面歌词" />
     </StackPanel>
+    <Grid RowDefinitions="*,Auto">
     <controls:DesktopLyricText x:Name="LyricText" Margin="8,4,8,0" Cursor="SizeAll"
                               AutomationProperties.Name="{Binding CurrentDesktopLyric}" />
+    <controls:DesktopLyricText x:Name="TranslationText" Grid.Row="1" Height="34" Margin="8,2,8,0" Cursor="SizeAll" IsVisible="False" />
+    </Grid>
   </Grid>
 </Window>

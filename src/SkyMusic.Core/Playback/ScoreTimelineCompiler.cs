@@ -15,13 +15,14 @@ public sealed class ScoreTimelineCompiler : IScoreTimelineCompiler
         Validate(timing);
 
         var events = ImmutableArray.CreateBuilder<PlaybackEvent>(score.Notes.Count * 2);
-        var adjustedStarts = BuildAdjustedStarts(score.Notes, timing.IntervalAdjustmentMilliseconds);
+        var adjustedStarts = BuildAdjustedStarts(score.Notes, timing.IntervalAdjustmentMilliseconds, timing.RandomIntervalMilliseconds);
 
         foreach (var note in score.Notes)
         {
             Validate(note);
             var start = adjustedStarts[note.StartMicroseconds];
-            var duration = Math.Max(1_000, note.DurationMicroseconds + (timing.KeyReleaseDelayMilliseconds * 1_000L));
+            var jitter = timing.RandomReleaseMilliseconds == 0 ? 0 : Random.Shared.Next(-timing.RandomReleaseMilliseconds, timing.RandomReleaseMilliseconds + 1);
+            var duration = Math.Max(1_000, note.DurationMicroseconds + ((timing.KeyReleaseDelayMilliseconds + jitter) * 1_000L));
             events.Add(new PlaybackEvent(
                 start,
                 note.MidiNote,
@@ -48,7 +49,7 @@ public sealed class ScoreTimelineCompiler : IScoreTimelineCompiler
     // 按实时音符间隔累积修正同一时刻的起始时间
     private static IReadOnlyDictionary<long, long> BuildAdjustedStarts(
         IReadOnlyList<NoteEvent> notes,
-        int intervalAdjustmentMilliseconds)
+        int intervalAdjustmentMilliseconds, int randomIntervalMilliseconds)
     {
         var starts = notes.Select(note => note.StartMicroseconds).Distinct().Order().ToArray();
         var adjusted = new Dictionary<long, long>(starts.Length);
@@ -62,7 +63,9 @@ public sealed class ScoreTimelineCompiler : IScoreTimelineCompiler
         for (var index = 1; index < starts.Length; index++)
         {
             var sourceInterval = starts[index] - starts[index - 1];
-            adjusted[starts[index]] = adjusted[starts[index - 1]] + Math.Max(0, sourceInterval + intervalAdjustment);
+            // 同时发声的和弦共享起点；随机波动只作用于相邻起点，不打散和弦，也不倒序。
+            var jitter = randomIntervalMilliseconds == 0 ? 0 : Random.Shared.Next(-randomIntervalMilliseconds, randomIntervalMilliseconds + 1) * 1_000L;
+            adjusted[starts[index]] = adjusted[starts[index - 1]] + Math.Max(0, sourceInterval + intervalAdjustment + jitter);
         }
 
         return adjusted;
@@ -70,6 +73,8 @@ public sealed class ScoreTimelineCompiler : IScoreTimelineCompiler
 
     private static void Validate(ScoreTimingSettings timing)
     {
+        if (timing.RandomIntervalMilliseconds is < 0 or > 1_000 || timing.RandomReleaseMilliseconds is < 0 or > 1_000)
+            throw new ArgumentOutOfRangeException(nameof(timing), "随机波动范围必须在 0 到 1000 毫秒之间");
         if (timing.IntervalAdjustmentMilliseconds is < -1_000 or > 5_000)
         {
             throw new ArgumentOutOfRangeException(nameof(timing), "Interval adjustment must be between -1000 and 5000 ms");

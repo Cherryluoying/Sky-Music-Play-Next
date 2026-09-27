@@ -125,8 +125,12 @@
                         Width="330" MaxHeight="360" BoxShadow="{StaticResource SkyElevationLow}">
                   <StackPanel Spacing="8">
                     <TextBlock Text="播放列表" Classes="sky-section-title" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <ComboBox ItemsSource="{Binding Categories}" SelectedIndex="{Binding QueueCategoryIndex, Mode=TwoWay}" MinWidth="110" />
+                      <Button Content="{Binding PlaybackModeText}" Command="{Binding CyclePlaybackModeCommand}" />
+                    </StackPanel>
                     <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                      <ItemsControl ItemsSource="{Binding Queue}">
+                      <ItemsControl ItemsSource="{Binding VisibleQueue}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
                             <Grid ColumnDefinitions="*,38">
@@ -139,7 +143,7 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="8,0" Spacing="2">
                                   <TextBlock Text="{Binding Title}" Classes="sky-card-title" TextTrimming="CharacterEllipsis" />
-                                  <TextBlock Text="{Binding Artist}" Classes="sky-caption" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding KindText}" Classes="sky-caption" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="2" Text="{Binding DurationText}" Classes="sky-caption" VerticalAlignment="Center" />
                               </Grid>
@@ -165,8 +169,8 @@
                   Command="{Binding ToggleDesktopLyricsCommand}"
                   Content="词" FontFamily="Microsoft YaHei UI" FontSize="13" ToolTip.Tip="桌面歌词" />
           <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
-                  Content="&#xE8EE;" IsHitTestVisible="False"
-                  ToolTip.Tip="列表循环（当前输出暂不支持切换）" />
+                  Content="{Binding PlaybackModeGlyph}" Command="{Binding CyclePlaybackModeCommand}"
+                  ToolTip.Tip="{Binding PlaybackModeText}" />
           <Grid ColumnDefinitions="Auto,68" Margin="2,0" VerticalAlignment="Center"
                 IsEnabled="{Binding CanAdjustVolume}" ToolTip.Tip="音频音量（MIDI 音量在插件内调整）">
             <TextBlock Classes="player-volume" Text="&#xE767;" FontFamily="Segoe Fluent Icons" FontSize="15"
@@ -176,9 +180,10 @@
                     Value="{Binding VolumePercent, Mode=TwoWay}"
                     Margin="6,0,0,0" VerticalAlignment="Center" ToolTip.Tip="{Binding VolumePercent, StringFormat={}{0:0}%}" />
           </Grid>
-          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
-                  Content="&#xE712;" IsHitTestVisible="False"
-                  ToolTip.Tip="更多功能待接入" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary" IsVisible="{Binding ShowsLyrics}"
+                  Click="Fullscreen_OnClick" ToolTip.Tip="歌词全屏 / 退出全屏（Esc）"
+                  AutomationProperties.Name="歌词全屏或退出全屏"
+                  Content="{Binding LyricsFullScreenGlyph, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
           <!-- MIDI 专用钢琴音色入口：普通音频和 TXT/JSON 演奏谱不会显示。 -->
           <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
                   IsVisible="{Binding IsMidi}" Content="琴" FontFamily="Microsoft YaHei UI"
@@ -226,6 +231,7 @@
                         Width="310" BoxShadow="{StaticResource SkyElevationLow}">
                   <StackPanel Spacing="10">
                     <TextBlock Text="演奏设置" Classes="sky-section-title" />
+                    <controls:ScorePerformanceSettings IsEnabled="{Binding IsScore}" />
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
                       <TextBlock Text="音符间隔" Classes="sky-body" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding IntervalAdjustmentText}" Classes="sky-secondary" VerticalAlignment="Center" />

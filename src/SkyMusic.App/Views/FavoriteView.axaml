@@ -12,6 +12,10 @@
     </controls:SkyWindowHeader>
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="28,18,28,40" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <ComboBox ItemsSource="{Binding Library.Categories}" SelectedIndex="{Binding Library.FavoriteCategoryIndex, Mode=TwoWay}" MinWidth="130" />
+          <Button Content="{Binding Library.Playback.PlaybackModeText}" Command="{Binding Library.Playback.CyclePlaybackModeCommand}" ToolTip.Tip="切换播放模式" />
+        </StackPanel>
         <Grid ColumnDefinitions="36,50,*,130,52,40,40">
           <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />

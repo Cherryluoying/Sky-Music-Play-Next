@@ -131,11 +131,11 @@
   </Window.Styles>
 
   <Grid Background="Transparent">
-  <Border Background="{StaticResource SkyBrushBackground}"
+  <Border x:Name="ShellBorder" Background="{StaticResource SkyBrushBackground}"
           CornerRadius="{StaticResource SkyCornerWindow}"
           ClipToBounds="True">
     <Grid RowDefinitions="44,*,88">
-      <Border Grid.Row="0" Classes="shell-titlebar" ZIndex="10"
+      <Border x:Name="TitleChrome" Grid.Row="0" Classes="shell-titlebar" ZIndex="10"
               Classes.player-open="{Binding IsPlayerVisible}"
               BorderThickness="0"
               PointerPressed="TitleBar_OnPointerPressed">
@@ -205,10 +205,11 @@
       </Grid>
 
       <views:PlayerView Grid.Row="0" Grid.RowSpan="3" ZIndex="5"
+                        IsFullScreen="{Binding IsLyricsFullScreen, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                         IsVisible="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                         DataContext="{Binding Playback}" />
 
-      <controls:SkyMiniPlayer Grid.Row="2" ZIndex="10" DataContext="{Binding Playback}" />
+      <controls:SkyMiniPlayer x:Name="MiniPlayer" Grid.Row="2" ZIndex="10" DataContext="{Binding Playback}" />
     </Grid>
   </Border>
 

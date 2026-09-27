@@ -1,10 +1,14 @@
 <!-- 模块：悬浮演奏入口；猫爪球与唯一气泡共用一个透明窗口，内部切页不弹出子窗口。 -->
 <Window x:Class="SkyMusic.App.Views.FloatingPlayerWindow"
         xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:SkyMusic.App.Controls"
         Width="64" Height="64" CanResize="False" ShowInTaskbar="False" ShowActivated="False"
         WindowDecorations="None" TransparencyLevelHint="Transparent" Background="Transparent"
         Topmost="True" RequestedThemeVariant="Dark" WindowStartupLocation="Manual" Title="猫橘咪音乐 · 悬浮演奏">
   <Window.Resources>
+    <!-- ToolTip 自己拥有弹出层，必须覆盖其文字资源与模板内文本，避免继承浅色主题黑字。 -->
+    <SolidColorBrush x:Key="ToolTipForeground">White</SolidColorBrush>
+    <SolidColorBrush x:Key="ToolTipBackground">#FF242A36</SolidColorBrush>
     <ControlTheme x:Key="FloatingIcon" TargetType="Button">
       <Setter Property="Width" Value="38" /><Setter Property="Height" Value="38" />
       <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="White" />
@@ -36,6 +40,17 @@
       <Style Selector="^:pressed /template/ Border#TrackSurface"><Setter Property="Background" Value="#32FFFFFF" /></Style>
     </ControlTheme>
   </Window.Resources>
+  <Window.Styles>
+    <Style Selector="ToolTip"><Setter Property="Foreground" Value="White" /><Setter Property="Background" Value="#FF242A36" /></Style>
+    <Style Selector="ToolTip TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="ToolTip /template/ ContentPresenter"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="controls|ScorePerformanceSettings TextBlock"><Setter Property="Foreground" Value="White" /><Setter Property="FontSize" Value="12" /></Style>
+    <Style Selector="controls|ScorePerformanceSettings NumericUpDown"><Setter Property="Foreground" Value="White" /><Setter Property="Background" Value="#FF303744" /></Style>
+    <Style Selector="controls|ScorePerformanceSettings TextBox"><Setter Property="Foreground" Value="White" /><Setter Property="CaretBrush" Value="White" /></Style>
+    <Style Selector="ListBox.category"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ListBox.category ListBoxItem"><Setter Property="Foreground" Value="White" /><Setter Property="Focusable" Value="False" /><Setter Property="Padding" Value="12,5" /></Style>
+    <Style Selector="ListBox.category ListBoxItem:selected"><Setter Property="Background" Value="#38FFFFFF" /><Setter Property="Foreground" Value="White" /></Style>
+  </Window.Styles>
   <Grid x:Name="FloatingRoot">
     <Border x:Name="Bubble" IsVisible="False" Width="352" Height="412" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="14"
             CornerRadius="20" Background="#F51D222D" BorderBrush="#32FFFFFF" BorderThickness="1">
@@ -54,10 +69,16 @@
           <Button Grid.Column="1" x:Name="CollapseButton" Theme="{StaticResource FloatingIcon}" Content="&#xE70D;"
                   Click="Collapse_OnClick" ToolTip.Tip="收起" AutomationProperties.Name="收起" />
         </Grid>
-        <TextBox x:Name="SearchBox" Grid.Row="1" IsVisible="{Binding IsSearch}" Text="{Binding SearchText, Mode=TwoWay}"
+        <StackPanel Grid.Row="1" Spacing="6">
+        <TextBox x:Name="SearchBox" IsVisible="{Binding IsSearch}" Text="{Binding SearchText, Mode=TwoWay}"
                  PointerPressed="SearchBox_OnPointerPressed"
                  PlaceholderText="搜索歌名、歌手或作者" Foreground="White" CaretBrush="White"
                  Background="#22FFFFFF" BorderBrush="#40FFFFFF" CornerRadius="9" MinHeight="36" />
+        <ListBox Classes="category" IsVisible="{Binding ShowsTracks}" ItemsSource="{Binding Categories}"
+                 SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" Focusable="False">
+          <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+        </ListBox>
+        </StackPanel>
         <Grid Grid.Row="2">
           <ScrollViewer IsVisible="{Binding ShowsTracks}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
             <ItemsControl x:Name="TrackList" ItemsSource="{Binding Tracks}">
@@ -82,7 +103,9 @@
           <TextBlock IsVisible="{Binding IsEmpty}" Text="暂无歌曲" Foreground="#ADFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
           <TextBlock IsVisible="{Binding IsLoading}" Text="正在读取…" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
           <!-- 通过图标和数值调整，说明放在悬停提示，避免小面板变成文字工具栏。 -->
-          <StackPanel IsVisible="{Binding IsSettings}" VerticalAlignment="Center" Spacing="22">
+          <ScrollViewer IsVisible="{Binding IsSettings}" VerticalScrollBarVisibility="Hidden">
+          <StackPanel Spacing="10">
+            <controls:ScorePerformanceSettings DataContext="{Binding Playback}" IsEnabled="{Binding IsScore}" />
             <Grid ColumnDefinitions="38,*,38,38" ColumnSpacing="6" IsEnabled="{Binding Playback.IsScore}">
               <TextBlock Text="&#xE916;" FontFamily="Segoe Fluent Icons" Foreground="White" FontSize="22"
                          VerticalAlignment="Center" HorizontalAlignment="Center" ToolTip.Tip="音符间隔调整" />
@@ -105,6 +128,7 @@
             </Grid>
             <TextBlock Text="仅作用于 TXT / JSON 乐谱演奏" Foreground="#ADFFFFFF" FontSize="11" HorizontalAlignment="Center" />
           </StackPanel>
+          </ScrollViewer>
         </Grid>
         <StackPanel Grid.Row="3" Spacing="3">
           <TextBlock Text="{Binding Error}" Foreground="#FFD3A5" FontSize="11" TextWrapping="Wrap" MaxLines="2" />
@@ -114,6 +138,8 @@
           <TextBlock Text="{Binding Playback.CurrentItem.Title, FallbackValue=尚未选择歌曲}" Foreground="#C9FFFFFF"
                      TextAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" />
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+            <Button Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.PlaybackModeGlyph}"
+                    Command="{Binding Playback.CyclePlaybackModeCommand}" ToolTip.Tip="{Binding Playback.PlaybackModeText}" />
             <Button x:Name="PreviousButton" Theme="{StaticResource FloatingIcon}" Content="&#xE892;"
                     Click="Transport_OnClick" Tag="previous" ToolTip.Tip="上一首" AutomationProperties.Name="上一首" />
             <Button x:Name="PlayButton" Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.PlayGlyph}"

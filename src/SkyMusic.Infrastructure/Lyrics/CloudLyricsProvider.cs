@@ -61,7 +61,7 @@ public sealed class CloudLyricsProvider : ILyricsProvider
                 string.IsNullOrWhiteSpace(document.Provider) ? "SkyMusic Cloud" : document.Provider,
                 document.Lines
                     .OrderBy(line => line.TimeMs)
-                    .Select(line => new LyricLine(TimeSpan.FromMilliseconds(line.TimeMs), line.Text))
+                    .Select(line => new LyricLine(TimeSpan.FromMilliseconds(line.TimeMs), line.Text, line.Translation))
                     .ToArray());
             await WriteCacheAsync(cachePath, result, cancellationToken);
             return result;
@@ -117,5 +117,5 @@ public sealed class CloudLyricsProvider : ILyricsProvider
 
     private sealed record LyricsResponse(string Id, string Provider, IReadOnlyList<LineResponse> Lines);
 
-    private sealed record LineResponse(long TimeMs, string Text);
+    private sealed record LineResponse(long TimeMs, string Text, string? Translation = null);
 }

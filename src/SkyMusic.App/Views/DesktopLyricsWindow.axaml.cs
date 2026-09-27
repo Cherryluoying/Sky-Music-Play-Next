@@ -35,6 +35,8 @@ public sealed partial class DesktopLyricsWindow : Window
         _appearance = new DesktopLyricsAppearance(settingsPath);
         AppearancePanel.DataContext = _appearance;
         LyricText.ApplyAppearance(_appearance);
+        TranslationText.FontScale = .65;
+        TranslationText.ApplyAppearance(_appearance);
         _appearance.PropertyChanged += Appearance_OnChanged;
         _frameTimer.Tick += Frame_OnTick;
         _saveTimer.Tick += Save_OnTick;
@@ -130,6 +132,7 @@ public sealed partial class DesktopLyricsWindow : Window
     private void RenderFrame()
     {
         var playback = _playback;
+        TranslationText.IsVisible = false;
         if (playback is null) { LyricText.SetFrame("猫橘咪音乐", 0); return; }
         var index = playback.CurrentLyricIndex;
         if (index < 0 || index >= playback.Lyrics.Count)
@@ -148,12 +151,15 @@ public sealed partial class DesktopLyricsWindow : Window
         }
         var position = playback.PositionSeconds + (playback.IsPlaying ? Math.Min(.25, _positionClock.Elapsed.TotalSeconds) : 0);
         LyricText.SetFrame(line.Text, end > start ? (position - start) / (end - start) : 0);
+        TranslationText.IsVisible = line.HasTranslation;
+        if (line.HasTranslation) TranslationText.SetFrame(line.Translation, end > start ? (position - start) / (end - start) : 0);
     }
 
     private void Appearance_OnChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(DesktopLyricsAppearance.SaveError)) return;
         LyricText.ApplyAppearance(_appearance);
+        TranslationText.ApplyAppearance(_appearance);
         _dirty = true;
         _saveTimer.Stop();
         _saveTimer.Start();

@@ -1,0 +1,15 @@
+<!-- 模块：主播放器与悬浮窗共用的演奏速度和随机波动设置。0 表示关闭随机。 -->
+<UserControl x:Class="SkyMusic.App.Controls.ScorePerformanceSettings"
+             xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid ColumnDefinitions="*,120" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+    <TextBlock Text="演奏速度 ×" VerticalAlignment="Center" />
+    <NumericUpDown Grid.Column="1" Minimum="0.1" Maximum="4" Increment="0.1" FormatString="0.0#"
+                   Value="{Binding ScoreSpeed, Mode=TwoWay}" ToolTip.Tip="1.0 为原速；仅作用于乐谱演奏" />
+    <TextBlock Grid.Row="1" Text="随机间隔 ±ms" VerticalAlignment="Center" />
+    <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1000" Increment="1" FormatString="0"
+                   Value="{Binding RandomIntervalMilliseconds, Mode=TwoWay}" ToolTip.Tip="例如 10 表示原间隔上下 10 毫秒；0 关闭" />
+    <TextBlock Grid.Row="2" Text="随机释放 ±ms" VerticalAlignment="Center" />
+    <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1000" Increment="1" FormatString="0"
+                   Value="{Binding RandomReleaseMilliseconds, Mode=TwoWay}" ToolTip.Tip="例如 10 表示释放延迟上下 10 毫秒；0 关闭" />
+  </Grid>
+</UserControl>
