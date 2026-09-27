@@ -9,6 +9,28 @@
     <!-- ToolTip 自己拥有弹出层，必须覆盖其文字资源与模板内文本，避免继承浅色主题黑字。 -->
     <SolidColorBrush x:Key="ToolTipForeground">White</SolidColorBrush>
     <SolidColorBrush x:Key="ToolTipBackground">#FF242A36</SolidColorBrush>
+    <!-- 分类独立模板，覆盖默认主题的蓝底黑字及悬停/选中模板状态。 -->
+    <ControlTheme x:Key="FloatingCategory" TargetType="ListBoxItem">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Padding" Value="12,5" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="CategorySurface" Padding="{TemplateBinding Padding}" Background="Transparent" CornerRadius="7">
+            <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="12" FontWeight="SemiBold" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#CategorySurface"><Setter Property="Background" Value="#24FFFFFF" /></Style>
+      <Style Selector="^:selected /template/ Border#CategorySurface"><Setter Property="Background" Value="#38FFFFFF" /></Style>
+    </ControlTheme>
+    <ControlTheme x:Key="FloatingTrackItem" TargetType="ListBoxItem">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
     <ControlTheme x:Key="FloatingIcon" TargetType="Button">
       <Setter Property="Width" Value="38" /><Setter Property="Height" Value="38" />
       <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="White" />
@@ -50,6 +72,16 @@
     <Style Selector="ListBox.category"><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="ListBox.category ListBoxItem"><Setter Property="Foreground" Value="White" /><Setter Property="Focusable" Value="False" /><Setter Property="Padding" Value="12,5" /></Style>
     <Style Selector="ListBox.category ListBoxItem:selected"><Setter Property="Background" Value="#38FFFFFF" /><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="ListBox.category ListBoxItem:pointerover"><Setter Property="Background" Value="#24FFFFFF" /><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="ListBox.category ListBoxItem:pointerover TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="#Bubble TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="#Bubble ListBoxItem"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="#Bubble ListBoxItem:pointerover"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="#Bubble ListBoxItem:pointerover TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="#Bubble TextBox"><Setter Property="Foreground" Value="White" /><Setter Property="CaretBrush" Value="White" /></Style>
+    <Style Selector="ListBox.floating-track-list"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="0" /></Style>
+    <Style Selector="ListBox.floating-track-list ListBoxItem"><Setter Property="Padding" Value="0" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ListBox.floating-track-list ListBoxItem:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="White" /></Style>
   </Window.Styles>
   <Grid x:Name="FloatingRoot">
     <Border x:Name="Bubble" IsVisible="False" Width="352" Height="412" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="14"
@@ -75,31 +107,34 @@
                  PlaceholderText="搜索歌名、歌手或作者" Foreground="White" CaretBrush="White"
                  Background="#22FFFFFF" BorderBrush="#40FFFFFF" CornerRadius="9" MinHeight="36" />
         <ListBox Classes="category" IsVisible="{Binding ShowsTracks}" ItemsSource="{Binding Categories}"
-                 SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" Focusable="False">
+                 SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" Focusable="False" ItemContainerTheme="{StaticResource FloatingCategory}">
           <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+          <!-- 显式文字颜色避免字符串默认模板继承全局浅色排版资源。 -->
+          <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="White" /></DataTemplate></ListBox.ItemTemplate>
         </ListBox>
         </StackPanel>
         <Grid Grid.Row="2">
-          <ScrollViewer IsVisible="{Binding ShowsTracks}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-            <ItemsControl x:Name="TrackList" ItemsSource="{Binding Tracks}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Theme="{StaticResource FloatingTrack}" Click="Track_OnClick" ToolTip.Tip="{Binding Title}">
-                    <Grid ColumnDefinitions="38,*,22" ColumnSpacing="10">
-                      <Border Width="38" Height="38" CornerRadius="8" ClipToBounds="True" Background="#30FFFFFF">
-                        <Image Source="{Binding Cover}" Stretch="UniformToFill" />
-                      </Border>
-                      <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Artist}" Foreground="#ADFFFFFF" FontSize="11" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
-                      <TextBlock Grid.Column="2" Text="&#xE768;" FontFamily="Segoe Fluent Icons" Foreground="White" VerticalAlignment="Center" />
-                    </Grid>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
+          <!-- ListBox 默认启用虚拟化，只创建当前视口附近的曲目行。 -->
+          <ListBox x:Name="TrackList" Classes="floating-track-list" IsVisible="{Binding ShowsTracks}" ItemsSource="{Binding Tracks}"
+                   Focusable="False" ItemContainerTheme="{StaticResource FloatingTrackItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ScrollViewer.VerticalScrollBarVisibility="Hidden">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Button Theme="{StaticResource FloatingTrack}" Click="Track_OnClick" ToolTip.Tip="{Binding Title}">
+                  <Grid ColumnDefinitions="38,*,22" ColumnSpacing="10">
+                    <Border Width="38" Height="38" CornerRadius="8" ClipToBounds="True" Background="#30FFFFFF">
+                      <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Artist}" Foreground="#ADFFFFFF" FontSize="11" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="&#xE768;" FontFamily="Segoe Fluent Icons" Foreground="White" VerticalAlignment="Center" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
           <TextBlock IsVisible="{Binding IsEmpty}" Text="暂无歌曲" Foreground="#ADFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
           <TextBlock IsVisible="{Binding IsLoading}" Text="正在读取…" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
           <!-- 通过图标和数值调整，说明放在悬停提示，避免小面板变成文字工具栏。 -->

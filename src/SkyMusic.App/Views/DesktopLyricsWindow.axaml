@@ -113,6 +113,12 @@
                 <Slider x:Name="FontSizeSlider" Theme="{StaticResource SkyProgressBarTheme}"
                         Minimum="20" Maximum="64" TickFrequency="1" IsSnapToTickEnabled="True"
                         Value="{Binding FontSize, Mode=TwoWay}" ToolTip.Tip="字体大小" />
+                <Grid ColumnDefinitions="*,140" RowDefinitions="Auto,Auto" RowSpacing="10">
+                  <TextBlock Text="字体粗细" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding Weights}" SelectedIndex="{Binding WeightIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                  <TextBlock Grid.Row="1" Text="译文间距（px）" VerticalAlignment="Center" />
+                  <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="24" Increment="1" Value="{Binding TranslationSpacing, Mode=TwoWay}" />
+                </Grid>
                 <ItemsControl ItemsSource="{Binding Colors}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>

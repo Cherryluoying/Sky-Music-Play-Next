@@ -58,7 +58,7 @@ public sealed partial class LyricsView : UserControl
 
     private void OnPlaybackChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(PlaybackViewModel.CurrentLyricIndex) or nameof(PlaybackViewModel.CurrentItem))
+        if (e.PropertyName is nameof(PlaybackViewModel.CurrentLyricIndex) or nameof(PlaybackViewModel.CurrentItem) or nameof(PlaybackViewModel.LyricsAppearance))
             QueueCenter();
     }
 

@@ -9,7 +9,7 @@
       <controls:SkyWindowHeader.TrailingContent>
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
           <controls:SkySearchBox Width="220" Text="{Binding SearchText}" Watermark="筛选本地歌单" />
-          <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Click="ImportMedia_OnClick">
+          <Button Theme="{StaticResource SkyPrimaryCommandButtonTheme}" Click="ImportMedia_OnClick" IsEnabled="{Binding !IsImporting}">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <TextBlock Text="&#xE898;" FontFamily="Segoe Fluent Icons" />
               <TextBlock Text="导入媒体" />
@@ -19,33 +19,49 @@
       </controls:SkyWindowHeader.TrailingContent>
     </controls:SkyWindowHeader>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="28,18,28,40" Spacing="12">
-        <Grid ColumnDefinitions="*,Auto">
+    <Grid Grid.Row="1" Margin="28,18,28,24" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="12">
+        <Grid RowDefinitions="Auto,Auto">
           <StackPanel Spacing="3">
             <TextBlock Text="全部媒体" Classes="sky-section-title" />
             <TextBlock Text="TXT、JSON、MIDI、MP3、WAV 等文件会统一进入播放列表" Classes="sky-secondary" />
           </StackPanel>
-          <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="sky-caption" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="1" Text="{Binding StatusText}" Classes="sky-caption" TextWrapping="Wrap" Margin="0,6,0,0" />
         </Grid>
-        <StackPanel Orientation="Horizontal" Spacing="12">
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsImporting}" Height="3" />
+        <WrapPanel Grid.Row="2" Orientation="Horizontal">
           <ComboBox ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" MinWidth="130" />
-          <Button Content="{Binding Playback.PlaybackModeText}" Command="{Binding Playback.CyclePlaybackModeCommand}" ToolTip.Tip="切换歌单循环、单曲循环、随机播放" />
-        </StackPanel>
-        <Grid ColumnDefinitions="36,50,*,130,52,40,40" Margin="0,2,0,0">
+          <Button Content="{Binding Playback.PlaybackModeText}" Margin="12,0,0,0" Command="{Binding Playback.CyclePlaybackModeCommand}" ToolTip.Tip="切换歌单循环、单曲循环、随机播放" />
+          <Button Content="导入文件夹" Theme="{StaticResource SkyCommandButtonTheme}" Margin="12,0,0,0" Click="ImportFolder_OnClick" IsEnabled="{Binding !IsImporting}" ToolTip.Tip="递归扫描文件夹，不移动或复制原文件" />
+          <Button Content="重新扫描" Theme="{StaticResource SkyCommandButtonTheme}" Margin="12,0,0,0" Command="{Binding ScanDirectoriesCommand}" ToolTip.Tip="扫描设置中的媒体库、曲谱和 MIDI 目录" />
+        </WrapPanel>
+        <Grid Grid.Row="3" ColumnDefinitions="36,50,*,130,52,40,40" Margin="0,2,0,0">
           <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
           <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />
           <TextBlock Grid.Column="4" Text="时长" Classes="sky-caption" HorizontalAlignment="Right" />
         </Grid>
-        <ItemsControl ItemsSource="{Binding Tracks}">
-          <ItemsControl.ItemTemplate>
+        <!-- 固定视口交给 ListBox 的虚拟化面板，上万首曲目也只创建可见的行。 -->
+        <ListBox Grid.Row="4" ItemsSource="{Binding Tracks}" Background="Transparent" BorderThickness="0" Padding="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="0" />
+              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Setter Property="Theme">
+                <ControlTheme TargetType="ListBoxItem">
+                  <Setter Property="Template">
+                    <ControlTemplate><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch" /></ControlTemplate>
+                  </Setter>
+                </ControlTheme>
+              </Setter>
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:TrackItemViewModel">
               <controls:TrackRow />
             </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </ScrollViewer>
+          </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
   </Grid>
 </UserControl>

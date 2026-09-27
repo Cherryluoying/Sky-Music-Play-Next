@@ -26,6 +26,9 @@ public sealed class SettingsViewModel : ObservableObject
     private string _cacheDirectory;
     private string _scoreLibraryDirectory;
     private string _midiLibraryDirectory;
+    private string _libraryDirectory;
+    private readonly Func<string, Func<Task>, Task>? _saveLibrarySettings;
+    private readonly Func<Task>? _scanLibrary;
     private string _ffmpegStatus;
     private string _statusText = "设置会保存到当前 Windows 用户目录";
 
@@ -33,11 +36,15 @@ public sealed class SettingsViewModel : ObservableObject
         IAppSettingsStore store,
         AppSettings settings,
         IFfmpegService ffmpeg,
-        Action openKeyMapping)
+        Action openKeyMapping,
+        Func<string, Func<Task>, Task>? saveLibrarySettings = null,
+        Func<Task>? scanLibrary = null)
     {
         _store = store;
         _settings = settings;
         _ffmpeg = ffmpeg;
+        _saveLibrarySettings = saveLibrarySettings;
+        _scanLibrary = scanLibrary;
         _defaultPlaybackTargetId = settings.General.DefaultPlaybackTargetId;
         _rememberLastTarget = settings.General.RememberLastTarget;
         _floatingWindowEnabled = settings.General.FloatingWindowEnabled;
@@ -49,8 +56,11 @@ public sealed class SettingsViewModel : ObservableObject
         _cloudServiceUrl = settings.Network.CloudServiceUrl;
         _networkTimeoutSeconds = settings.Network.TimeoutSeconds;
         _cacheDirectory = settings.Storage.CacheDirectory ?? string.Empty;
-        _scoreLibraryDirectory = settings.Storage.ScoreLibraryDirectory ?? MediaLibraryDirectories.Score(new StorageSettings());
-        _midiLibraryDirectory = settings.Storage.MidiLibraryDirectory ?? MediaLibraryDirectories.Midi(new StorageSettings());
+        _libraryDirectory = MediaLibraryDirectories.Root(settings.Storage);
+        // 旧版把默认路径写成绝对路径，升级时还原为跟随根目录的默认值。
+        var root = MediaLibraryDirectories.Root(settings.Storage);
+        _scoreLibraryDirectory = NormalizeOverride(settings.Storage.ScoreLibraryDirectory, Path.Combine(root, "musicscore"));
+        _midiLibraryDirectory = NormalizeOverride(settings.Storage.MidiLibraryDirectory, Path.Combine(root, "midi"));
 
         PerformanceModes =
         [
@@ -171,6 +181,22 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _scoreLibraryDirectory, value);
     }
 
+    public string LibraryDirectory
+    {
+        get => _libraryDirectory;
+        set => SetProperty(ref _libraryDirectory, value);
+    }
+
+    public string GetRootDirectory() => MediaLibraryDirectories.Root(new StorageSettings { LibraryDirectory = LibraryDirectory });
+
+    // 分类覆盖为空时自动跟随根目录，用户仍可指定独立的曲谱或 MIDI 文件夹。
+    private StorageSettings CurrentStorage => new()
+    {
+        LibraryDirectory = GetRootDirectory(),
+        ScoreLibraryDirectory = NullIfWhiteSpace(ScoreLibraryDirectory),
+        MidiLibraryDirectory = NullIfWhiteSpace(MidiLibraryDirectory)
+    };
+
     public string MidiLibraryDirectory
     {
         get => _midiLibraryDirectory;
@@ -181,8 +207,8 @@ public sealed class SettingsViewModel : ObservableObject
 
     // 打开目录使用界面当前值；未填时解析为默认分类目录。
     public string GetLibraryDirectory(bool midi) => midi
-        ? MediaLibraryDirectories.Midi(new StorageSettings { MidiLibraryDirectory = MidiLibraryDirectory })
-        : MediaLibraryDirectories.Score(new StorageSettings { ScoreLibraryDirectory = ScoreLibraryDirectory });
+        ? MediaLibraryDirectories.Midi(CurrentStorage)
+        : MediaLibraryDirectories.Score(CurrentStorage);
 
     public string FfmpegStatus
     {
@@ -226,6 +252,8 @@ public sealed class SettingsViewModel : ObservableObject
             .ToArray();
         var scoreDirectory = GetLibraryDirectory(false);
         var midiDirectory = GetLibraryDirectory(true);
+        var rootDirectory = GetRootDirectory();
+        Directory.CreateDirectory(rootDirectory);
         Directory.CreateDirectory(scoreDirectory);
         Directory.CreateDirectory(midiDirectory);
         _settings = new AppSettings
@@ -260,8 +288,9 @@ public sealed class SettingsViewModel : ObservableObject
             Storage = new StorageSettings
             {
                 CacheDirectory = NullIfWhiteSpace(CacheDirectory),
-                ScoreLibraryDirectory = scoreDirectory,
-                MidiLibraryDirectory = midiDirectory
+                LibraryDirectory = rootDirectory,
+                ScoreLibraryDirectory = NullIfWhiteSpace(ScoreLibraryDirectory),
+                MidiLibraryDirectory = NullIfWhiteSpace(MidiLibraryDirectory)
             }
         };
 
@@ -269,16 +298,23 @@ public sealed class SettingsViewModel : ObservableObject
         try
         {
             _settings = _settings with { General = _settings.General with { FloatingWindowEnabled = FloatingWindowEnabled } };
-            await _store.SaveAsync(_settings);
+            if (_saveLibrarySettings is not null)
+                await _saveLibrarySettings(rootDirectory, () => _store.SaveAsync(_settings).AsTask());
+            else await _store.SaveAsync(_settings);
         }
         finally { _saveGate.Release(); }
-        ScoreLibraryDirectory = scoreDirectory;
-        MidiLibraryDirectory = midiDirectory;
-        StatusText = "设置已保存，曲谱 / MIDI 目录立即用于后续导入；外部工具和网络配置下次启动生效";
+        LibraryDirectory = rootDirectory;
+        StatusText = "设置已保存，正在扫描目录中的媒体…";
+        if (_scanLibrary is not null) await _scanLibrary();
+        StatusText = "设置已保存，媒体库目录已生效；扫描结果请查看本地歌单。外部工具和网络配置下次启动生效";
     }
 
     private void SetError(Exception exception) => StatusText = exception.Message;
 
     private static string? NullIfWhiteSpace(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeOverride(string? path, string defaultPath) =>
+        string.IsNullOrWhiteSpace(path) || string.Equals(path.Trim(), defaultPath, StringComparison.OrdinalIgnoreCase)
+            ? string.Empty : path;
 }

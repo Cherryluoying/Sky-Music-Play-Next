@@ -25,7 +25,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     private readonly IMediaLibraryStore? _libraryStore;
     private readonly IScorePlaybackController? _scoreController;
     private readonly IMidiVisualizationService? _midiVisualization;
-    private readonly string _localLyricsDirectory;
+    private string _localLyricsDirectory;
     private bool _isQueuePopupOpen;
     private bool _isScoreSettingsOpen;
     private bool _isPlaybackLoading;
@@ -104,8 +104,11 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         IMidiVisualizationService? midiVisualization = null,
         string? localLyricsDirectory = null,
         IInstrumentPluginHost? instrumentPluginHost = null,
-        IReadOnlyList<string>? vst3SearchPaths = null)
+        IReadOnlyList<string>? vst3SearchPaths = null,
+        string? lyricsAppearancePath = null)
     {
+        LyricsAppearance = new LyricsAppearance(lyricsAppearancePath);
+        LyricsAppearance.PropertyChanged += OnLyricsAppearanceChanged;
         _player = player;
         _lyricsProvider = lyricsProvider;
         _libraryStore = libraryStore;
@@ -209,6 +212,14 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public ObservableCollection<TrackItemViewModel> RecentTracks { get; } = [];
 
     public ObservableCollection<LyricLineViewModel> Lyrics { get; } = [];
+    public LyricsAppearance LyricsAppearance { get; }
+
+    private void OnLyricsAppearanceChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LyricsAppearance.SaveError)) return;
+        foreach (var line in Lyrics) line.ApplyAppearance(LyricsAppearance);
+        OnPropertyChanged(nameof(LyricsAppearance));
+    }
 
     // 使用不可变快照绑定钢琴窗，避免后台解析完成后集合实例不变而不触发重绘。
     private IReadOnlyList<MidiVisualNote> _midiNotes = [];
@@ -641,6 +652,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     }
 
     // 导入 LRC/TXT，复制到媒体库并把关联路径持久化到当前曲目。
+    public void SetLocalLyricsDirectory(string directory) => _localLyricsDirectory = Path.GetFullPath(directory);
+
     public async Task ImportLocalLyricsAsync(string sourcePath)
     {
         if (CurrentItem is null || IsMidi)
@@ -792,7 +805,9 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         Lyrics.Clear();
         foreach (var line in LyricLines.Normalize(lines))
         {
-            Lyrics.Add(new LyricLineViewModel(line));
+            var item = new LyricLineViewModel(line);
+            item.ApplyAppearance(LyricsAppearance);
+            Lyrics.Add(item);
         }
         OnPropertyChanged(nameof(HasLyrics));
         OnPropertyChanged(nameof(HasNoLyrics));
@@ -1105,6 +1120,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        LyricsAppearance.PropertyChanged -= OnLyricsAppearanceChanged;
+        LyricsAppearance.Dispose();
         _playbackRequest?.Cancel();
         _seekRequest?.Cancel();
         _lyricsRequest?.Cancel();

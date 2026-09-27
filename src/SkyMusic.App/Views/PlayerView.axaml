@@ -60,9 +60,39 @@
         <Button Grid.Column="2" Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon"
                 IsVisible="{Binding ShowsLyrics}" Click="ImportLyrics_OnClick"
                 Content="&#xE8E5;" Foreground="White" ToolTip.Tip="导入本地歌词" />
-        <Button Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon" Content="&#xE712;"
-                Foreground="White" IsHitTestVisible="False" Opacity="0.62"
-                ToolTip.Tip="更多功能待接入" VerticalAlignment="Center" />
+        <Button x:Name="LyricsAppearanceButton" Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Classes="immersive-icon" Content="&#xE713;"
+                Foreground="White" IsVisible="{Binding ShowsLyrics}" ToolTip.Tip="歌词外观" AutomationProperties.Name="歌词外观" VerticalAlignment="Center">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <ThemeVariantScope RequestedThemeVariant="Light">
+              <Border Background="#F8FAFC" Padding="16" CornerRadius="12">
+                <StackPanel Width="280" Spacing="12" DataContext="{Binding LyricsAppearance}">
+                  <TextBlock Text="歌词外观" FontSize="17" FontWeight="Bold" />
+                  <Grid ColumnDefinitions="*,132" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+                    <TextBlock Text="字号（px）" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Column="1" Minimum="18" Maximum="56" Increment="1" Value="{Binding FontSize, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="1" Text="当前句字重" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Weights}" SelectedIndex="{Binding CurrentWeightIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Row="2" Text="其他句字重" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Weights}" SelectedIndex="{Binding OtherWeightIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Row="3" Text="字间距（px）" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="8" Increment="0.5" Value="{Binding LetterSpacing, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="4" Text="句间距（px）" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="64" Increment="2" Value="{Binding LineSpacing, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="5" Text="译文间距（px）" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="24" Increment="1" Value="{Binding TranslationSpacing, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="6" Text="译文字号（%）" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Row="6" Grid.Column="1" Minimum="60" Maximum="100" Increment="5" Value="{Binding TranslationSizePercent, Mode=TwoWay}" ToolTip.Tip="相对原文字号的比例；100% 与原文一样大" />
+                  </Grid>
+                  <TextBlock Text="实时预览并自动保存；全屏沿用此设置。" FontSize="12" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding SaveError}" Foreground="#C43C39" FontSize="12" TextWrapping="Wrap" />
+                  <Button Content="恢复默认" Command="{Binding ResetCommand}" Theme="{StaticResource SkyCommandButtonTheme}" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              </ThemeVariantScope>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
       </Grid>
 
       <!-- MIDI 页面没有歌词列时也必须占满可用尺寸，否则自定义控件的 DesiredSize 为 0。 -->

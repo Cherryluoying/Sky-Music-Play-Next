@@ -131,22 +131,32 @@
 
         <Border Classes="sky-settings-section">
           <StackPanel Spacing="14">
-            <TextBlock Text="曲谱与 MIDI 库" Classes="sky-section-title" />
+            <TextBlock Text="本地媒体库" Classes="sky-section-title" />
+            <Grid ColumnDefinitions="100,*,Auto,Auto">
+              <TextBlock Text="媒体库目录" Classes="sky-card-title" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding LibraryDirectory}" PlaceholderText="选择包含音乐、曲谱和 MIDI 的整个目录" />
+              <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="选择目录" Tag="root" Click="SelectLibraryDirectory_OnClick" />
+              <Button Grid.Column="3" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
+                      Content="打开目录" Tag="root" Click="OpenLibraryDirectory_OnClick" />
+            </Grid>
+            <TextBlock Text="保存后扫描目录及子目录中的乐谱、音频与 MIDI。library.db 和新封面缓存存放在此；新导入的文件按 music / musicscore / midi 分类。"
+                       Classes="sky-caption" TextWrapping="Wrap" />
             <Grid ColumnDefinitions="100,*,Auto,Auto" RowDefinitions="Auto,12,Auto">
               <TextBlock Text="曲谱目录" Classes="sky-card-title" VerticalAlignment="Center" />
-              <TextBox Grid.Column="1" Text="{Binding ScoreLibraryDirectory}" PlaceholderText="留空使用默认 musicscore 目录" />
+              <TextBox Grid.Column="1" Text="{Binding ScoreLibraryDirectory}" PlaceholderText="留空使用媒体库下的 musicscore" />
               <Button Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
                       Content="选择目录" Tag="score" Click="SelectLibraryDirectory_OnClick" />
               <Button Grid.Column="3" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
                       Content="打开目录" Tag="score" Click="OpenLibraryDirectory_OnClick" />
               <TextBlock Grid.Row="2" Text="MIDI 目录" Classes="sky-card-title" VerticalAlignment="Center" />
-              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding MidiLibraryDirectory}" PlaceholderText="留空使用默认 midi 目录" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding MidiLibraryDirectory}" PlaceholderText="留空使用媒体库下的 midi" />
               <Button Grid.Row="2" Grid.Column="2" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
                       Content="选择目录" Tag="midi" Click="SelectLibraryDirectory_OnClick" />
               <Button Grid.Row="2" Grid.Column="3" Theme="{StaticResource SkyCommandButtonTheme}" Margin="8,0,0,0"
                       Content="打开目录" Tag="midi" Click="OpenLibraryDirectory_OnClick" />
             </Grid>
-            <TextBlock Text="点击保存设置后立即用于后续导入；已有曲目保留原路径。选择目录不会自动导入其中的文件。"
+            <TextBlock Text="也可为曲谱 / MIDI 指定独立目录，保存时一并扫描。扫描保留原文件、不重复复制；支持同名封面及 cover / covers 目录。切换到新库时复制现有歌单、收藏和历史；已有数据库不会被覆盖。"
                        Classes="sky-caption" TextWrapping="Wrap" />
           </StackPanel>
         </Border>

@@ -30,6 +30,15 @@ public sealed class MediaImportService(
     public async ValueTask<MusicTrack> ImportAsync(
         string sourcePath,
         CancellationToken cancellationToken = default)
+        => await ImportCoreAsync(sourcePath, true, null, cancellationToken).ConfigureAwait(false);
+
+    public ValueTask<MusicTrack> ImportInPlaceAsync(string sourcePath, string? libraryRoot = null,
+        CancellationToken cancellationToken = default)
+        => ImportCoreAsync(sourcePath, false, libraryRoot, cancellationToken);
+
+    // 文件导入与目录扫描共用解析逻辑，只有显式导入文件才复制到分类目录。
+    private async ValueTask<MusicTrack> ImportCoreAsync(string sourcePath, bool copyToLibrary,
+        string? libraryRoot, CancellationToken cancellationToken)
     {
         var fullSourcePath = Path.GetFullPath(sourcePath);
         var extension = Path.GetExtension(fullSourcePath).ToLowerInvariant();
@@ -49,18 +58,19 @@ public sealed class MediaImportService(
         };
         var id = await ComputeHashAsync(fullSourcePath, cancellationToken);
         // 每次导入读取已保存的分类目录，设置立即生效；数据库中的已有文件路径不变。
-        var storage = settingsStore is null || kind == MediaKind.Audio
+        var storage = settingsStore is null
             ? new StorageSettings() : (await settingsStore.LoadAsync(cancellationToken)).Storage;
+        var root = MediaLibraryDirectories.Root(storage, _libraryDirectory);
         var targetDirectory = kind switch
         {
             MediaKind.Score => MediaLibraryDirectories.Score(storage, _libraryDirectory),
             MediaKind.Midi => MediaLibraryDirectories.Midi(storage, _libraryDirectory),
-            _ => Path.Combine(_libraryDirectory, folderName)
+            _ => Path.Combine(root, folderName)
         };
-        Directory.CreateDirectory(targetDirectory);
-        var targetPath = Path.Combine(targetDirectory, $"{id}{extension}");
-        if (!File.Exists(targetPath))
+        var targetPath = copyToLibrary ? Path.Combine(targetDirectory, $"{id}{extension}") : fullSourcePath;
+        if (copyToLibrary && !File.Exists(targetPath))
         {
+            Directory.CreateDirectory(targetDirectory);
             await using var source = new FileStream(fullSourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, true);
             await using var target = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 64 * 1024, true);
             await source.CopyToAsync(target, cancellationToken);
@@ -102,15 +112,18 @@ public sealed class MediaImportService(
             kind,
             targetPath,
             author);
-        return await RefreshMetadataAsync(track, cancellationToken).ConfigureAwait(false);
+        track = await RefreshMetadataAsync(track, cancellationToken).ConfigureAwait(false);
+        return LocalMediaCompanions.Attach(track, fullSourcePath, libraryRoot ?? root);
     }
 
     // 新导入与旧曲库共用标签路径；没有标签时保留原文件标题和默认封面。
     public async ValueTask<MusicTrack> RefreshMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default)
     {
         if (track.Kind != MediaKind.Audio || string.IsNullOrWhiteSpace(track.SourcePath)) return track;
+        var storage = settingsStore is null ? new StorageSettings()
+            : (await settingsStore.LoadAsync(cancellationToken).ConfigureAwait(false)).Storage;
         var metadata = await AudioMetadataReader.ReadAsync(ffmpegPath, track.SourcePath,
-            Path.Combine(_libraryDirectory, "covers"), cancellationToken).ConfigureAwait(false);
+            Path.Combine(MediaLibraryDirectories.Root(storage, _libraryDirectory), "covers"), cancellationToken).ConfigureAwait(false);
         return track with
         {
             Title = metadata.Title ?? track.Title,

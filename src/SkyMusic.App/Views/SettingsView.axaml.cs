@@ -74,19 +74,21 @@ public sealed partial class SettingsView : UserControl
     {
         if (DataContext is not SettingsViewModel vm || TopLevel.GetTopLevel(this) is not { } topLevel) return;
         var midi = (sender as Control)?.Tag?.ToString() == "midi";
+        var root = (sender as Control)?.Tag?.ToString() == "root";
         try
         {
-            var current = vm.GetLibraryDirectory(midi);
+            var current = root ? vm.GetRootDirectory() : vm.GetLibraryDirectory(midi);
             var initial = Directory.Exists(current)
                 ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(current) : null;
             var selected = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = midi ? "选择 MIDI 库目录" : "选择曲谱库目录",
+                Title = root ? "选择整个媒体库目录" : midi ? "选择 MIDI 库目录" : "选择曲谱库目录",
                 AllowMultiple = false,
                 SuggestedStartLocation = initial
             });
             if (selected.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
-            if (midi) vm.MidiLibraryDirectory = path;
+            if (root) vm.LibraryDirectory = path;
+            else if (midi) vm.MidiLibraryDirectory = path;
             else vm.ScoreLibraryDirectory = path;
         }
         catch (Exception ex) { vm.ReportDirectoryError(ex.Message); }
@@ -97,7 +99,8 @@ public sealed partial class SettingsView : UserControl
         if (DataContext is not SettingsViewModel vm || TopLevel.GetTopLevel(this) is not { } topLevel) return;
         try
         {
-            var path = vm.GetLibraryDirectory((sender as Control)?.Tag?.ToString() == "midi");
+            var tag = (sender as Control)?.Tag?.ToString();
+            var path = tag == "root" ? vm.GetRootDirectory() : vm.GetLibraryDirectory(tag == "midi");
             Directory.CreateDirectory(path);
             if (!await topLevel.Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(path)))
                 vm.ReportDirectoryError("无法打开资源管理器，请检查目录是否可访问。");

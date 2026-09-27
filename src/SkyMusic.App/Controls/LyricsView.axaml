@@ -46,11 +46,11 @@
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="vm:LyricLineViewModel">
-            <Button Classes="lyric-line" Click="Timeline_OnClick">
+            <Button Classes="lyric-line" Click="Timeline_OnClick" Padding="{Binding LinePadding}">
               <Grid ColumnDefinitions="*,52" MinWidth="0">
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="{Binding TranslationSpacing}">
                 <TextBlock Classes="lyric-copy" Text="{Binding Text}" Foreground="White"
-                           FontSize="{Binding FontSize}" FontWeight="{Binding LineFontWeight}"
+                           FontSize="{Binding FontSize}" FontWeight="{Binding LineFontWeight}" LetterSpacing="{Binding LetterSpacing}"
                            Opacity="{Binding Opacity}" TextWrapping="Wrap" TextAlignment="Left"
                            RenderTransformOrigin="0%,50%" VerticalAlignment="Center" MinHeight="36">
                   <TextBlock.RenderTransform>
@@ -67,8 +67,24 @@
                     <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.36" /></Transitions>
                   </TextBlock.Transitions>
                 </TextBlock>
-                <TextBlock Text="{Binding Translation}" IsVisible="{Binding HasTranslation}" FontSize="16" FontWeight="Normal"
-                           Foreground="#C9FFFFFF" Opacity="{Binding Opacity}" TextWrapping="Wrap" />
+                <TextBlock Classes="lyric-translation" Text="{Binding Translation}" IsVisible="{Binding HasTranslation}" FontSize="{Binding TranslationFontSize}" FontWeight="{Binding LineFontWeight}"
+                           LetterSpacing="{Binding LetterSpacing}"
+                           Foreground="#E6FFFFFF" Opacity="{Binding Opacity}" TextWrapping="Wrap" RenderTransformOrigin="0%,0%">
+                  <!-- 与原文同一切句时钟，译文也平滑强调；只变渲染比例，不改变行高。 -->
+                  <TextBlock.RenderTransform>
+                    <ScaleTransform ScaleX="{Binding TranslationVisualScale}" ScaleY="{Binding TranslationVisualScale}">
+                      <ScaleTransform.Transitions>
+                        <Transitions>
+                          <DoubleTransition Property="ScaleX" Duration="0:0:0.44" Easing="CubicEaseOut" />
+                          <DoubleTransition Property="ScaleY" Duration="0:0:0.44" Easing="CubicEaseOut" />
+                        </Transitions>
+                      </ScaleTransform.Transitions>
+                    </ScaleTransform>
+                  </TextBlock.RenderTransform>
+                  <TextBlock.Transitions>
+                    <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.36" /></Transitions>
+                  </TextBlock.Transitions>
+                </TextBlock>
                 </StackPanel>
                 <TextBlock Grid.Column="1" Classes="lyric-time" Text="{Binding TimestampText}"
                            HorizontalAlignment="Right" VerticalAlignment="Center">

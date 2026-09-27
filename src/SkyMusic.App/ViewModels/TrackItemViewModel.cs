@@ -8,6 +8,8 @@ public sealed class TrackItemViewModel : ObservableObject
 {
     private bool _isSelected;
     private bool _isFavorite;
+    private Bitmap? _cover;
+    private Func<Bitmap?>? _loadCover;
 
     public TrackItemViewModel(
         MusicTrack track,
@@ -16,10 +18,12 @@ public sealed class TrackItemViewModel : ObservableObject
         Action<TrackItemViewModel>? toggleFavorite = null,
         bool isFavorite = false,
         int displayIndex = 0,
-        Action<TrackItemViewModel>? playNext = null)
+        Action<TrackItemViewModel>? playNext = null,
+        Func<Bitmap?>? loadCover = null)
     {
         Track = track;
-        Cover = cover;
+        _cover = cover;
+        _loadCover = loadCover;
         PlayCommand = new RelayCommand(_ => play(this));
         ToggleFavoriteCommand = new RelayCommand(_ => toggleFavorite?.Invoke(this));
         _isFavorite = isFavorite;
@@ -30,7 +34,19 @@ public sealed class TrackItemViewModel : ObservableObject
 
     public MusicTrack Track { get; private set; }
 
-    public Bitmap? Cover { get; }
+    // 悬浮窗传入惰性工厂，仅显示行或播放队列真正需要封面时读取；普通页面沿用直接传图。
+    public Bitmap? Cover
+    {
+        get
+        {
+            if (_loadCover is { } load)
+            {
+                _cover = load();
+                _loadCover = null;
+            }
+            return _cover;
+        }
+    }
 
     public RelayCommand PlayCommand { get; }
     public RelayCommand PlayNextCommand { get; }

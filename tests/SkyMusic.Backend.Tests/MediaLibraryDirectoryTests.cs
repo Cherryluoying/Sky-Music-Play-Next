@@ -43,4 +43,27 @@ public sealed class MediaLibraryDirectoryTests
         Assert.Equal(Path.Combine(root, "midi"), MediaLibraryDirectories.Midi(new StorageSettings(), root));
         Assert.Throws<ArgumentException>(() => MediaLibraryDirectories.Score(new StorageSettings { ScoreLibraryDirectory = "relative" }, root));
     }
+
+    [Fact]
+    public async Task AudioImportsFollowRootChangesWithoutRestartingImporter()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "SkyMusicTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var source = Path.Combine(root, "music.mp3");
+            await File.WriteAllBytesAsync(source, [1, 2, 3]);
+            var settings = new JsonAppSettingsStore(Path.Combine(root, "settings.json"));
+            var importer = new MediaImportService(Path.Combine(root, "default"), new ScoreImportService(), settingsStore: settings);
+            foreach (var name in new[] { "first", "second" })
+            {
+                var target = Path.Combine(root, name);
+                await settings.SaveAsync(new AppSettings { Storage = new StorageSettings { LibraryDirectory = target } });
+                var track = await importer.ImportAsync(source);
+                Assert.Equal(Path.Combine(target, "music"), Path.GetDirectoryName(track.SourcePath));
+                Assert.True(File.Exists(track.SourcePath));
+            }
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

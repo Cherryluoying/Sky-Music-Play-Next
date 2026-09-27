@@ -99,14 +99,10 @@ public sealed partial class App : Application
             var instrumentHost = new Vst3ProcessHost(new Vst3ProcessHostOptions(Path.Combine(
                 AppContext.BaseDirectory, "SkyMusic.VstHost.exe")));
             _playbackController = new UnifiedPlaybackController(_scorePlaybackController, ffmpegPath, instrumentHost);
-            var mediaLibraryDirectory = Path.Combine(appData, "Library");
-            foreach (var directoryName in new[] { "music", "midi", "musicscore", "lyrics" })
-            {
-                Directory.CreateDirectory(Path.Combine(mediaLibraryDirectory, directoryName));
-            }
-            var mediaLibraryStore = new SqliteMediaLibraryStore(Path.Combine(mediaLibraryDirectory, "library.db"));
-            Task.Run(() => mediaLibraryStore.InitializeAsync()).GetAwaiter().GetResult();
-            var mediaImporter = new MediaImportService(mediaLibraryDirectory, new ScoreImportService(), ffmpegPath, _appSettingsStore);
+            var mediaLibraryDirectory = MediaLibraryDirectories.Root(appSettings.Storage);
+            var mediaLibraryStore = new ConfiguredMediaLibraryStore(_appSettingsStore);
+            // 曲库初始化交给页面异步处理，外置磁盘离线或数据库损坏时仍能打开设置修复。
+            var mediaImporter = new MediaImportService(MediaLibraryDirectories.DefaultRoot, new ScoreImportService(), ffmpegPath, _appSettingsStore);
             _globalHotkeys = new WindowsGlobalHotkeyService();
             _globalHotkeys.TogglePlaybackRequested += ToggleGlobalPlayback;
             _globalHotkeys.StopRequested += StopGlobalPlayback;

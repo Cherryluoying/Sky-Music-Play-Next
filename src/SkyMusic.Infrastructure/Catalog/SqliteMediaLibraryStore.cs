@@ -50,6 +50,13 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
             );
             CREATE INDEX IF NOT EXISTS idx_tracks_favorite ON tracks(is_favorite);
             CREATE INDEX IF NOT EXISTS idx_tracks_recent ON tracks(last_played_utc DESC);
+            CREATE INDEX IF NOT EXISTS idx_playlist_order ON playlist_items(playlist_id, sort_index);
+            CREATE TABLE IF NOT EXISTS media_file_index (
+                source_path TEXT PRIMARY KEY,
+                file_length INTEGER NOT NULL,
+                modified_ticks INTEGER NOT NULL,
+                track_id TEXT NOT NULL
+            );
             INSERT OR IGNORE INTO playlists(id, title, created_utc)
             VALUES ('local', '本地歌单', CURRENT_TIMESTAMP);
             """;
@@ -119,6 +126,14 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
         await connection.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
+        await UpsertCoreAsync(connection, transaction, track, playlistId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    // 单文件导入与目录批量扫描共用同一套更新语义，不覆盖收藏与播放次数。
+    private static async Task UpsertCoreAsync(SqliteConnection connection, SqliteTransaction transaction,
+        MusicTrack track, string? playlistId, CancellationToken cancellationToken)
+    {
         await using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
@@ -174,6 +189,46 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
+    }
+
+    public async Task<IReadOnlyList<MediaFileStamp>> GetFileIndexAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT source_path, file_length, modified_ticks, track_id FROM media_file_index;";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var files = new List<MediaFileStamp>();
+        while (await reader.ReadAsync(cancellationToken))
+            files.Add(new(reader.GetString(0), reader.GetInt64(1), reader.GetInt64(2), reader.GetString(3)));
+        return files;
+    }
+
+    // 每批只开启一次连接和事务；签名与曲目同时落盘，取消或失败不会留下半条索引。
+    public async Task SaveScanBatchAsync(IReadOnlyList<MusicTrack> tracks, IReadOnlyList<MediaFileStamp> files,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        foreach (var track in tracks)
+            await UpsertCoreAsync(connection, transaction, track, "local", cancellationToken);
+        foreach (var file in files)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO media_file_index(source_path, file_length, modified_ticks, track_id)
+                VALUES($path, $length, $modified, $id)
+                ON CONFLICT(source_path) DO UPDATE SET file_length = excluded.file_length,
+                    modified_ticks = excluded.modified_ticks, track_id = excluded.track_id;
+                """;
+            command.Parameters.AddWithValue("$path", file.Path);
+            command.Parameters.AddWithValue("$length", file.Length);
+            command.Parameters.AddWithValue("$modified", file.ModifiedTicks);
+            command.Parameters.AddWithValue("$id", file.TrackId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -228,8 +283,8 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
     }
 
     // 单用户桌面库关闭连接池，确保应用退出后数据库文件立即释放。
-    private SqliteConnection CreateConnection() => new(
-        $"Data Source={_databasePath};Mode=ReadWriteCreate;Pooling=False");
+    private SqliteConnection CreateConnection() => new(new SqliteConnectionStringBuilder
+        { DataSource = _databasePath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString());
 
     // 兼容已经创建的媒体库，仅补充新列，不重建用户数据库。
     private static async Task EnsureLyricsColumnAsync(

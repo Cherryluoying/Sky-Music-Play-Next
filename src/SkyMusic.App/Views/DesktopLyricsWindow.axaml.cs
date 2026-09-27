@@ -37,6 +37,7 @@ public sealed partial class DesktopLyricsWindow : Window
         LyricText.ApplyAppearance(_appearance);
         TranslationText.FontScale = .65;
         TranslationText.ApplyAppearance(_appearance);
+        ApplyTextLayout();
         _appearance.PropertyChanged += Appearance_OnChanged;
         _frameTimer.Tick += Frame_OnTick;
         _saveTimer.Tick += Save_OnTick;
@@ -160,6 +161,7 @@ public sealed partial class DesktopLyricsWindow : Window
         if (e.PropertyName == nameof(DesktopLyricsAppearance.SaveError)) return;
         LyricText.ApplyAppearance(_appearance);
         TranslationText.ApplyAppearance(_appearance);
+        ApplyTextLayout();
         _dirty = true;
         _saveTimer.Stop();
         _saveTimer.Start();
@@ -170,6 +172,15 @@ public sealed partial class DesktopLyricsWindow : Window
         _saveTimer.Stop();
         _appearance.Save();
         _dirty = false;
+    }
+
+    // 为字号和译文间距预留实际高度，避免调大后被固定行高再次缩小。
+    private void ApplyTextLayout()
+    {
+        LyricText.MinHeight = _appearance.FontSize * 1.4 + _appearance.OutlineWidth * 2;
+        TranslationText.Height = _appearance.FontSize * .65 * 1.4 + _appearance.OutlineWidth * 2;
+        TranslationText.Margin = new Thickness(8, _appearance.TranslationSpacing, 8, 0);
+        Height = Math.Max(156, LyricText.MinHeight + TranslationText.Height + _appearance.TranslationSpacing + 66);
     }
 
     private void Surface_OnPointerEntered(object? sender, PointerEventArgs e) => SetControlsVisible(true);

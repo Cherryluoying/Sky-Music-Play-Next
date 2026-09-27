@@ -3,6 +3,8 @@ using System.Collections.ObjectModel;
 using SkyMusic.App.Services;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Services;
+using SkyMusic.Core.Settings;
+using SkyMusic.Infrastructure.Catalog;
 
 namespace SkyMusic.App.ViewModels;
 
@@ -16,6 +18,9 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     private readonly HashSet<string> _metadataChecked = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly IAppSettingsStore? _settingsStore;
+    private readonly SemaphoreSlim _importGate = new(1, 1);
+    private bool _isImporting;
     private string _searchText = string.Empty;
     private bool _isLoading;
     private string? _statusText;
@@ -30,19 +35,96 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
         IMediaLibraryStore store,
         IMediaImportService importer,
         CoverImageService covers,
-        PlaybackViewModel playback)
+        PlaybackViewModel playback,
+        IAppSettingsStore? settingsStore = null)
     {
         _store = store;
         _importer = importer;
         _covers = covers;
         _playback = playback;
+        _settingsStore = settingsStore;
+        ScanDirectoriesCommand = new AsyncRelayCommand(_ => ScanConfiguredDirectoriesAsync(),
+            _ => !IsImporting, exception => StatusText = exception.Message);
         _playback.MediaLibraryChanged += OnMediaLibraryChanged;
-        _ = RefreshAsync();
+        _ = InitializeAsync();
     }
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
     public ObservableCollection<TrackItemViewModel> FavoriteTracks { get; } = [];
     public ObservableCollection<TrackItemViewModel> RecentTracks { get; } = [];
+    public AsyncRelayCommand ScanDirectoriesCommand { get; }
+    public bool IsImporting
+    {
+        get => _isImporting;
+        private set
+        {
+            if (SetProperty(ref _isImporting, value)) ScanDirectoriesCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    // 启动先显示数据库中的歌单，再索引已配置目录；发现文件不依赖手工逐首导入。
+    private async Task InitializeAsync()
+    {
+        await RefreshAsync();
+        if (_settingsStore is not null) await ScanConfiguredDirectoriesAsync();
+    }
+
+    public async Task ScanConfiguredDirectoriesAsync()
+    {
+        try
+        {
+            var settings = _settingsStore is null ? new StorageSettings()
+                : (await _settingsStore.LoadAsync(_lifetime.Token)).Storage;
+            var root = MediaLibraryDirectories.Root(settings);
+            var directories = new List<string> { root };
+            if (!string.IsNullOrWhiteSpace(settings.ScoreLibraryDirectory)) directories.Add(MediaLibraryDirectories.Score(settings));
+            if (!string.IsNullOrWhiteSpace(settings.MidiLibraryDirectory)) directories.Add(MediaLibraryDirectories.Midi(settings));
+            await ImportDirectoriesAsync(directories);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception) { StatusText = $"扫描曲库失败：{exception.Message}"; }
+    }
+
+    // 切换数据库前等待当前导入结束，避免同一批文件跨库写入。
+    public async Task SaveStorageSettingsAsync(string directory, Func<Task> persistSettings)
+    {
+        await _importGate.WaitAsync(_lifetime.Token);
+        try
+        {
+            await _refreshGate.WaitAsync(_lifetime.Token);
+            try
+            {
+                await Task.Run(() => _store.ChangeDirectoryAsync(directory, persistSettings, _lifetime.Token));
+                _metadataChecked.Clear();
+            }
+            finally { _refreshGate.Release(); }
+        }
+        finally { _importGate.Release(); }
+    }
+
+    public async Task ImportDirectoriesAsync(IEnumerable<string> paths)
+    {
+        var entered = false;
+        try
+        {
+            await _importGate.WaitAsync(_lifetime.Token);
+            entered = true;
+            IsImporting = true;
+            StatusText = "正在查找目录中的乐谱、音乐和 MIDI…";
+            var progress = new Progress<string>(message => { if (IsImporting) StatusText = message; });
+            var scanner = new MediaDirectoryScanner(_importer, _store);
+            var result = await Task.Run(() => scanner.ScanAsync(paths, progress, _lifetime.Token), _lifetime.Token);
+            foreach (var record in await _store.GetAllAsync(_lifetime.Token)) _metadataChecked.Add(record.Track.Id);
+            await RefreshAsync();
+            StatusText = result.Summary;
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception) { StatusText = $"目录扫描失败：{exception.Message}"; }
+        finally
+        {
+            if (entered) { IsImporting = false; _importGate.Release(); }
+        }
+    }
 
     public string SearchText
     {
@@ -69,33 +151,46 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     }
 
     public IReadOnlySet<string> SupportedExtensions => _importer.SupportedExtensions;
+    public void ReportImportError(string message) => StatusText = $"导入失败：{message}";
 
     // 多文件导入逐个隔离错误，成功项目立即写入 SQLite 并刷新统一队列。
     public async Task ImportFilesAsync(IEnumerable<string> paths)
     {
-        IsLoading = true;
+        var entered = false;
         var imported = 0;
         var errors = new List<string>();
-        foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        try
         {
-            try
+            await _importGate.WaitAsync(_lifetime.Token);
+            entered = true;
+            IsImporting = true;
+            foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                var track = await _importer.ImportAsync(path);
-                await _store.UpsertAsync(track);
-                _metadataChecked.Add(track.Id);
-                imported++;
+                try
+                {
+                    var track = await Task.Run(async () => await _importer.ImportAsync(path, _lifetime.Token), _lifetime.Token);
+                    await _store.UpsertAsync(track, cancellationToken: _lifetime.Token);
+                    _metadataChecked.Add(track.Id);
+                    imported++;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception exception)
+                {
+                    errors.Add($"{Path.GetFileName(path)}：{exception.Message}");
+                }
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
-            {
-                errors.Add($"{Path.GetFileName(path)}：{exception.Message}");
-            }
-        }
 
-        await RefreshAsync();
-        StatusText = errors.Count == 0
-            ? $"已导入 {imported} 个媒体文件"
-            : $"成功 {imported} 个，失败 {errors.Count} 个 · {string.Join(" · ", errors.Take(2))}";
-        IsLoading = false;
+            await RefreshAsync();
+            StatusText = errors.Count == 0
+                ? $"已导入 {imported} 个媒体文件"
+                : $"成功 {imported} 个，失败 {errors.Count} 个 · {string.Join(" · ", errors.Take(2))}";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception) { StatusText = $"媒体导入失败：{exception.Message}"; }
+        finally
+        {
+            if (entered) { IsImporting = false; _importGate.Release(); }
+        }
     }
 
     public async Task RefreshAsync()

@@ -1,5 +1,4 @@
 // 模块：悬浮演奏窗的单面板状态；复用曲库与播放接口，搜索不改变主页面的筛选。
-using System.Collections.ObjectModel;
 using SkyMusic.App.Services;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Services;
@@ -13,6 +12,7 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private IReadOnlyList<StoredMediaTrack> _records = [];
+    private readonly Dictionary<string, TrackItemViewModel> _items = new(StringComparer.OrdinalIgnoreCase);
     private string _section = "playlist";
     private string _searchText = string.Empty;
     private bool _isLoading;
@@ -30,7 +30,8 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
     }
 
     public PlaybackViewModel Playback { get; }
-    public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
+    // 悬浮窗使用虚拟化 ListBox；批量替换只通知一次，避免分类切换逐条重排窗口。
+    public RangeObservableCollection<TrackItemViewModel> Tracks { get; } = [];
     public bool IsPlaylist => _section == "playlist";
     public bool IsFavorites => _section == "favorites";
     public bool IsSearch => _section == "search";
@@ -73,12 +74,21 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
             entered = true;
             IsLoading = true;
             Error = null;
-            await _store.InitializeAsync(_lifetime.Token);
             var section = _section;
-            var records = IsPlaylist
-                ? await _store.GetPlaylistAsync(cancellationToken: _lifetime.Token)
-                : await _store.GetAllAsync(_lifetime.Token);
-            if (!_lifetime.IsCancellationRequested && section == _section) { _records = records; Filter(); }
+            // SQLite 异步 API 的读取部分可能同步执行，整批查询移出界面线程。
+            var records = await Task.Run(async () =>
+            {
+                await _store.InitializeAsync(_lifetime.Token);
+                return section == "playlist"
+                    ? await _store.GetPlaylistAsync(cancellationToken: _lifetime.Token)
+                    : await _store.GetAllAsync(_lifetime.Token);
+            }, _lifetime.Token);
+            if (!_lifetime.IsCancellationRequested && section == _section)
+            {
+                _records = records;
+                _items.Clear();
+                Filter();
+            }
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception ex) { Error = $"曲库读取失败：{ex.Message}"; }
@@ -93,15 +103,29 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
         var query = IsSearch ? SearchText.Trim() : string.Empty;
         var records = _records.Where(record => !IsFavorites || record.IsFavorite)
             .Where(record => MediaCategoryFilter.Matches(record.Track.Kind, CategoryIndex))
-            .Where(record => string.IsNullOrEmpty(query) || new[] { record.Track.Title, record.Track.Artist, record.Track.Album, record.Track.Author }
-                .Any(text => text?.Contains(query, StringComparison.OrdinalIgnoreCase) == true))
-            .GroupBy(record => record.Track.Id, StringComparer.OrdinalIgnoreCase).Select(group => group.First());
-        Tracks.Clear();
-        foreach (var record in records)
-            Tracks.Add(new TrackItemViewModel(record.Track, _covers.GetCover(record.Track.CoverSource),
-                item => Playback.PlayFromCollection(item, Tracks), isFavorite: record.IsFavorite));
+            .Where(record => string.IsNullOrEmpty(query) || Matches(record.Track, query))
+            .DistinctBy(record => record.Track.Id, StringComparer.OrdinalIgnoreCase);
+        var items = records.Select(GetItem).ToArray();
+        Tracks.ReplaceRange(items);
         OnPropertyChanged(nameof(IsEmpty));
     }
+
+    // 分类切换复用行状态和已读封面，避免反复创建命令与临时对象。
+    private TrackItemViewModel GetItem(StoredMediaTrack record)
+    {
+        if (_items.TryGetValue(record.Track.Id, out var item)) return item;
+        item = new TrackItemViewModel(record.Track, null,
+            selected => Playback.PlayFromCollection(selected, Tracks), isFavorite: record.IsFavorite,
+            loadCover: () => _covers.GetCover(record.Track.CoverSource));
+        _items.Add(record.Track.Id, item);
+        return item;
+    }
+
+    private static bool Matches(MusicTrack track, string query) =>
+        track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        track.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        track.Album.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        track.Author.Contains(query, StringComparison.OrdinalIgnoreCase);
 
     public void Dispose() => _lifetime.Cancel();
 }

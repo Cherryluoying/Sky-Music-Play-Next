@@ -30,6 +30,7 @@ public sealed partial class FloatingPlayerWindow : Window
     {
         _viewModel = viewModel;
         DataContext = viewModel;
+        viewModel.Tracks.CollectionChanged += Tracks_OnChanged;
         Win32Properties.AddWndProcHookCallback(this, WindowMessage);
         AddHandler(PointerPressedEvent, Input_OnPointerPressed, RoutingStrategies.Tunnel);
         Opened += (_, _) =>
@@ -42,9 +43,21 @@ public sealed partial class FloatingPlayerWindow : Window
         Closed += (_, _) =>
         {
             _closed = true;
+            _viewModel.Tracks.CollectionChanged -= Tracks_OnChanged;
             Win32Properties.RemoveWndProcHookCallback(this, WindowMessage);
             _viewModel.Dispose();
         };
+    }
+
+    // 分类或搜索结果替换后回到首行，避免旧滚动偏移让新分类的第一首显示不全。
+    private void Tracks_OnChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_closed) return;
+            var scroll = TrackList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+            if (scroll is not null) scroll.Offset = default;
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     // 普通鼠标控制不激活窗口，防止 SendInput 演奏的音符发到悬浮窗；只有搜索主动获取焦点。

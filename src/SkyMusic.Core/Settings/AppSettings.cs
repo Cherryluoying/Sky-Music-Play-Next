@@ -62,6 +62,9 @@ public sealed record StorageSettings
 {
     public string? CacheDirectory { get; init; }
 
+    // 媒体库根目录同时容纳分类文件、封面缓存与 library.db；空值兼容旧位置。
+    public string? LibraryDirectory { get; init; }
+
     public string? ScoreLibraryDirectory { get; init; }
 
     public string? MidiLibraryDirectory { get; init; }

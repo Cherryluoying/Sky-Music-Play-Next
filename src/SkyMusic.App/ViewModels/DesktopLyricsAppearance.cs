@@ -10,6 +10,8 @@ public sealed class DesktopLyricsAppearance : ObservableObject
     private double _fontSize = 36;
     private double _opacityPercent = 100;
     private double _outlineWidth = 2;
+    private int _weightIndex = 3;
+    private double _translationSpacing = 2;
     private string? _saveError;
 
     public DesktopLyricsAppearance(string path)
@@ -22,6 +24,8 @@ public sealed class DesktopLyricsAppearance : ObservableObject
                 FontSize = saved.FontSize;
                 OpacityPercent = saved.OpacityPercent;
                 OutlineWidth = saved.OutlineWidth;
+                WeightIndex = saved.WeightIndex;
+                TranslationSpacing = saved.TranslationSpacing;
                 TextColor.Hex = saved.TextColor;
                 OutlineColor.Hex = saved.OutlineColor;
                 FillColor.Hex = saved.FillColor;
@@ -42,6 +46,10 @@ public sealed class DesktopLyricsAppearance : ObservableObject
         get => _fontSize;
         set => SetProperty(ref _fontSize, Bound(value, 20, 64, 36));
     }
+
+    public IReadOnlyList<string> Weights => LyricsAppearance.WeightLabels;
+    public int WeightIndex { get => _weightIndex; set => SetProperty(ref _weightIndex, Math.Clamp(value, 0, 4)); }
+    public double TranslationSpacing { get => _translationSpacing; set => SetProperty(ref _translationSpacing, Bound(value, 0, 24, 2)); }
 
     public double OpacityPercent
     {
@@ -71,7 +79,7 @@ public sealed class DesktopLyricsAppearance : ObservableObject
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_path))!);
             var saved = new Preferences(FontSize, OpacityPercent, OutlineWidth,
-                TextColor.ValidHex, OutlineColor.ValidHex, FillColor.ValidHex);
+                TextColor.ValidHex, OutlineColor.ValidHex, FillColor.ValidHex, WeightIndex, TranslationSpacing);
             File.WriteAllText(_path + ".tmp", JsonSerializer.Serialize(saved));
             File.Move(_path + ".tmp", _path, true);
             SaveError = null;
@@ -83,7 +91,7 @@ public sealed class DesktopLyricsAppearance : ObservableObject
     }
 
     private sealed record Preferences(double FontSize, double OpacityPercent, double OutlineWidth,
-        string TextColor, string OutlineColor, string FillColor);
+        string TextColor, string OutlineColor, string FillColor, int WeightIndex = 3, double TranslationSpacing = 2);
 }
 
 // 颜色输入允许任意 RGB 色值；输入途中保留最后有效颜色，避免歌词闪烁或异常。

@@ -17,7 +17,7 @@ public sealed class DesktopLyricText : Control
     private IBrush _textBrush = Brushes.White;
     private IBrush _fillBrush = new SolidColorBrush(Color.Parse("#FFCB70"));
     private IBrush _outlineBrush = new SolidColorBrush(Color.Parse("#20242C"));
-    private readonly Typeface _typeface = new(
+    private Typeface _typeface = new(
         new FontFamily("avares://SkyMusic.App/Assets/fonts/OPPO-Sans.ttf#OPPO Sans 4.0"),
         FontStyle.Normal, FontWeight.Bold);
 
@@ -40,6 +40,12 @@ public sealed class DesktopLyricText : Control
     public void ApplyAppearance(DesktopLyricsAppearance appearance)
     {
         if (_fontSize != appearance.FontSize * FontScale) _geometry = null;
+        var weight = LyricsAppearance.Weight(appearance.WeightIndex);
+        if (_typeface.Weight != weight)
+        {
+            _typeface = new Typeface(_typeface.FontFamily, FontStyle.Normal, weight);
+            _geometry = null;
+        }
         _fontSize = appearance.FontSize * FontScale;
         _outlineWidth = appearance.OutlineWidth;
         _textBrush = appearance.TextColor.Brush;

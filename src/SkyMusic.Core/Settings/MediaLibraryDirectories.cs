@@ -6,11 +6,16 @@ public static class MediaLibraryDirectories
     public static string DefaultRoot => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SkyMusicPlay", "Library");
 
+    public static string Root(StorageSettings settings, string? fallback = null)
+        => string.IsNullOrWhiteSpace(settings.LibraryDirectory)
+            ? Path.GetFullPath(fallback ?? DefaultRoot)
+            : Resolve(settings.LibraryDirectory, fallback ?? DefaultRoot, string.Empty);
+
     public static string Score(StorageSettings settings, string? root = null)
-        => Resolve(settings.ScoreLibraryDirectory, root ?? DefaultRoot, "musicscore");
+        => Resolve(settings.ScoreLibraryDirectory, Root(settings, root), "musicscore");
 
     public static string Midi(StorageSettings settings, string? root = null)
-        => Resolve(settings.MidiLibraryDirectory, root ?? DefaultRoot, "midi");
+        => Resolve(settings.MidiLibraryDirectory, Root(settings, root), "midi");
 
     private static string Resolve(string? configured, string root, string folder)
     {

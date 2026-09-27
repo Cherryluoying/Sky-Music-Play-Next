@@ -77,15 +77,22 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             NavigateTo(AppPage.Tasks, true);
         });
         _macroRunner = new MacroRunnerViewModel(macroImporter, macroSession, gameWindowService);
+        _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback, appSettingsStore);
         var settings = new SettingsViewModel(
             appSettingsStore,
             appSettings,
             ffmpegService,
-            () => NavigateTo(AppPage.KeyMapping, true));
+            () => NavigateTo(AppPage.KeyMapping, true),
+            _library.SaveStorageSettingsAsync,
+            async () =>
+            {
+                var storage = (await appSettingsStore.LoadAsync()).Storage;
+                Playback.SetLocalLyricsDirectory(Path.Combine(MediaLibraryDirectories.Root(storage), "lyrics"));
+                await _library.ScanConfiguredDirectoriesAsync();
+            });
         Settings = settings;
 
         var discover = new DiscoverViewModel(catalog, coverImages, Playback, mediaLibraryStore);
-        _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback);
         _pages = new Dictionary<AppPage, object>
         {
             [AppPage.Discover] = discover,

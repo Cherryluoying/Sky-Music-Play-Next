@@ -7,6 +7,16 @@ public interface IMediaLibraryStore
 {
     Task InitializeAsync(CancellationToken cancellationToken = default);
 
+    // 在保存根目录设置前验证目标库，并为新目录保留当前库的收藏、历史和歌单。
+    Task PrepareDirectoryAsync(string directory, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    async Task ChangeDirectoryAsync(string directory, Func<Task> persistSettings, CancellationToken cancellationToken = default)
+    {
+        await PrepareDirectoryAsync(directory, cancellationToken);
+        await persistSettings();
+    }
+
     Task<IReadOnlyList<StoredMediaTrack>> GetPlaylistAsync(
         string playlistId = "local",
         CancellationToken cancellationToken = default);
@@ -23,4 +33,14 @@ public interface IMediaLibraryStore
     Task UpdateMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default);
 
     Task RecordPlayedAsync(string trackId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MediaFileStamp>> GetFileIndexAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<MediaFileStamp>>([]);
+
+    // 扫描按批次提交曲目和文件签名；默认实现兼容其他媒体库提供程序。
+    async Task SaveScanBatchAsync(IReadOnlyList<MusicTrack> tracks, IReadOnlyList<MediaFileStamp> files,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var track in tracks) await UpsertAsync(track, cancellationToken: cancellationToken);
+    }
 }
