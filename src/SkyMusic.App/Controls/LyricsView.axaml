@@ -50,6 +50,7 @@
               <Grid ColumnDefinitions="*,52" MinWidth="0">
                 <StackPanel Spacing="{Binding TranslationSpacing}">
                 <TextBlock Classes="lyric-copy" Text="{Binding Text}" Foreground="White"
+                           FontFamily="{Binding DataContext.LyricFonts.EffectiveLyricsFont.Family, RelativeSource={RelativeSource AncestorType=UserControl}}"
                            FontSize="{Binding FontSize}" FontWeight="{Binding LineFontWeight}" LetterSpacing="{Binding LetterSpacing}"
                            Opacity="{Binding Opacity}" TextWrapping="Wrap" TextAlignment="Left"
                            RenderTransformOrigin="0%,50%" VerticalAlignment="Center" MinHeight="36">
@@ -68,6 +69,7 @@
                   </TextBlock.Transitions>
                 </TextBlock>
                 <TextBlock Classes="lyric-translation" Text="{Binding Translation}" IsVisible="{Binding HasTranslation}" FontSize="{Binding TranslationFontSize}" FontWeight="{Binding LineFontWeight}"
+                           FontFamily="{Binding DataContext.LyricFonts.EffectiveLyricsFont.Family, RelativeSource={RelativeSource AncestorType=UserControl}}"
                            LetterSpacing="{Binding LetterSpacing}"
                            Foreground="#E6FFFFFF" Opacity="{Binding Opacity}" TextWrapping="Wrap" RenderTransformOrigin="0%,0%">
                   <!-- 与原文同一切句时钟，译文也平滑强调；只变渲染比例，不改变行高。 -->

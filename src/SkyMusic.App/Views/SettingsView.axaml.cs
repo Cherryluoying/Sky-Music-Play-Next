@@ -10,6 +10,22 @@ public sealed partial class SettingsView : UserControl
 {
     public SettingsView() => InitializeComponent();
 
+    // 通过系统文件选择器导入到应用字体库；取消选择不改变当前字体。
+    private async void ImportFont_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel { Playback: { } playback } || TopLevel.GetTopLevel(this) is not { } topLevel) return;
+        try
+        {
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "导入歌词字体", AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("字体文件") { Patterns = ["*.ttf", "*.otf"] }]
+            });
+            if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) await playback.LyricFonts.ImportAsync(path);
+        }
+        catch (Exception ex) { playback.LyricFonts.ReportImportError(ex.Message); }
+    }
+
     // 仅在用户点击时交由系统浏览器打开固定项目地址。
     private async void ProjectAddress_OnClick(object? sender, RoutedEventArgs e)
     {

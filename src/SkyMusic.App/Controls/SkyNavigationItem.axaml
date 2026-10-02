@@ -7,13 +7,13 @@
           Classes.selected="{Binding IsSelected, ElementName=Root}"
           Command="{Binding Command, ElementName=Root}"
           CommandParameter="{Binding CommandParameter, ElementName=Root}">
-    <Grid ColumnDefinitions="27,*">
+    <Grid ColumnDefinitions="32,*">
       <TextBlock Text="{Binding Glyph, ElementName=Root}"
-                 FontFamily="Segoe Fluent Icons" FontSize="16"
+                 FontFamily="Segoe Fluent Icons" FontSize="19"
                  Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
                  VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Text="{Binding Label, ElementName=Root}"
-                 FontSize="12" FontWeight="Medium"
+                 FontSize="14" FontWeight="Normal"
                  Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
                  VerticalAlignment="Center" />
     </Grid>

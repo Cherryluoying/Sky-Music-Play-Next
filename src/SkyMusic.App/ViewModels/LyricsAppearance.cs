@@ -10,6 +10,7 @@ public sealed class LyricsAppearance : ObservableObject, IDisposable
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private double _fontSize = 28, _lineSpacing = 24, _letterSpacing, _translationSpacing = 6;
     private double _translationSizePercent = 80;
+    private double _fullScreenPaddingPercent = 24;
     private int _currentWeightIndex = 3, _otherWeightIndex;
     private bool _dirty;
     private string? _saveError;
@@ -31,6 +32,7 @@ public sealed class LyricsAppearance : ObservableObject, IDisposable
                 CurrentWeightIndex = saved.CurrentWeightIndex;
                 OtherWeightIndex = saved.OtherWeightIndex;
                 TranslationSizePercent = saved.TranslationSizePercent;
+                FullScreenPaddingPercent = saved.FullScreenPaddingPercent;
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
@@ -48,10 +50,13 @@ public sealed class LyricsAppearance : ObservableObject, IDisposable
             FontSize = 28; LineSpacing = 24; LetterSpacing = 0;
             TranslationSpacing = 6; CurrentWeightIndex = 3; OtherWeightIndex = 0;
             TranslationSizePercent = 80;
+            FullScreenPaddingPercent = 24;
         });
     }
 
     public double FontSize { get => _fontSize; set => SetProperty(ref _fontSize, Bound(value, 18, 56, 28)); }
+    // 上下对称留白按可用歌词区域百分比计算，跨分辨率保持相同观看比例。
+    public double FullScreenPaddingPercent { get => _fullScreenPaddingPercent; set => SetProperty(ref _fullScreenPaddingPercent, Bound(value, 5, 40, 24)); }
     public double LineSpacing { get => _lineSpacing; set => SetProperty(ref _lineSpacing, Bound(value, 0, 64, 24)); }
     public double LetterSpacing { get => _letterSpacing; set => SetProperty(ref _letterSpacing, Bound(value, 0, 8, 0)); }
     public double TranslationSpacing { get => _translationSpacing; set => SetProperty(ref _translationSpacing, Bound(value, 0, 24, 6)); }
@@ -72,7 +77,7 @@ public sealed class LyricsAppearance : ObservableObject, IDisposable
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_path))!);
             File.WriteAllText(_path + ".tmp", JsonSerializer.Serialize(new Preferences(FontSize, LineSpacing,
-                LetterSpacing, TranslationSpacing, CurrentWeightIndex, OtherWeightIndex, TranslationSizePercent)));
+                LetterSpacing, TranslationSpacing, CurrentWeightIndex, OtherWeightIndex, TranslationSizePercent, FullScreenPaddingPercent)));
             File.Move(_path + ".tmp", _path, true);
             _dirty = false;
             SaveError = null;
@@ -82,5 +87,6 @@ public sealed class LyricsAppearance : ObservableObject, IDisposable
     }
     public void Dispose() { _saveTimer.Stop(); Save(); }
     private sealed record Preferences(double FontSize = 28, double LineSpacing = 24, double LetterSpacing = 0,
-        double TranslationSpacing = 6, int CurrentWeightIndex = 3, int OtherWeightIndex = 0, double TranslationSizePercent = 80);
+        double TranslationSpacing = 6, int CurrentWeightIndex = 3, int OtherWeightIndex = 0, double TranslationSizePercent = 80,
+        double FullScreenPaddingPercent = 24);
 }

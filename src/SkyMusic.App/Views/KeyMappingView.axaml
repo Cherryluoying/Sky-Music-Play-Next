@@ -5,7 +5,7 @@
              xmlns:controls="using:SkyMusic.App.Controls">
   <Grid RowDefinitions="56,*">
     <controls:SkyWindowHeader Title="按键映射" ShowForward="True" />
-    <Grid Grid.Row="1" ColumnDefinitions="250,20,*" Margin="28,18,28,28">
+    <Grid Grid.Row="1" ColumnDefinitions="210,16,*" Margin="20,18,20,28">
       <Grid RowDefinitions="Auto,10,*,12,Auto">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Text="映射方案" Classes="sky-section-title" />
@@ -67,26 +67,30 @@
 
           <ScrollViewer Grid.Row="8" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-              <Grid ColumnDefinitions="74,150,180,120,*" Margin="0,0,0,4">
+              <TextBlock Text="选择键帽，或点击“录入”后按键。/ 与 ? 是同一物理键，不额外发送 Shift。Esc 取消录入。"
+                         Classes="sky-caption" TextWrapping="Wrap" Margin="0,0,0,10" />
+              <Grid ColumnDefinitions="50,112,*,36" Margin="0,0,0,4">
                 <TextBlock Text="音符" Classes="sky-caption" />
-                <TextBlock Grid.Column="1" Text="MIDI 音符号（21-108）" Classes="sky-caption" />
-                <TextBlock Grid.Column="2" Text="Windows 扫描码" Classes="sky-caption" />
-                <TextBlock Grid.Column="3" Text="特殊键标记" Classes="sky-caption" />
+                <TextBlock Grid.Column="1" Text="MIDI 音符号" Classes="sky-caption" />
+                <TextBlock Grid.Column="2" Text="键盘按键" Classes="sky-caption" />
               </Grid>
               <ItemsControl ItemsSource="{Binding Entries}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="74,150,180,120,*" MinHeight="44">
+                  <Grid ColumnDefinitions="50,112,*,36" MinHeight="44">
                     <TextBlock Text="{Binding NoteName}" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <NumericUpDown Grid.Column="1" Minimum="21" Maximum="108" Value="{Binding MidiNote}"
                                    IsEnabled="{Binding DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
                                    Margin="0,4,10,4" ToolTip.Tip="要演奏的 MIDI 音符编号，中央 C 为 60" />
-                    <NumericUpDown Grid.Column="2" Minimum="1" Maximum="65535" Value="{Binding ScanCode}"
-                                   IsEnabled="{Binding DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
-                                   Margin="0,4,10,4" ToolTip.Tip="Windows 键盘扫描码，不是字符或虚拟键码" />
-                    <CheckBox Grid.Column="3" IsChecked="{Binding IsExtended}" IsEnabled="{Binding DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
-                              Content="扩展键" VerticalAlignment="Center" ToolTip.Tip="方向键、数字键盘等需要扩展标志的按键" />
-                    <Button Grid.Column="4" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE74D;" HorizontalAlignment="Right"
+                    <Grid Grid.Column="2" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4,10,4"
+                          IsEnabled="{Binding DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}">
+                      <ComboBox ItemsSource="{Binding KeyOptions}" SelectedItem="{Binding SelectedKey, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <Button Grid.Column="1" Content="录入" MinWidth="64" Theme="{StaticResource SkyCommandButtonTheme}"
+                              Click="CaptureKey_OnClick" LostFocus="CaptureKey_OnLostFocus" ToolTip.Tip="点击后按下要绑定的键，Esc 取消" />
+                    </Grid>
+                    <Button Grid.Column="3" Theme="{StaticResource SkyIconButtonTheme}" Content="&#xE74D;" HorizontalAlignment="Right"
                             IsEnabled="{Binding DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
                             Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
                             CommandParameter="{Binding}" ToolTip.Tip="删除键位" />

@@ -252,22 +252,10 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
         record.Track,
         _covers.GetCover(record.Track.CoverSource),
         item => { if (context is null) _playback.PlayTrack(item); else _playback.PlayFromCollection(item, context); },
-        item => _ = ToggleFavoriteAsync(item),
+        item => _playback.ToggleFavoriteCommand.Execute(item),
         record.IsFavorite,
         index,
         item => _playback.PlayNext(item));
-
-    private async Task ToggleFavoriteAsync(TrackItemViewModel item)
-    {
-        item.IsFavorite = !item.IsFavorite;
-        await _store.SetFavoriteAsync(item.Track.Id, item.IsFavorite);
-        var index = _records.FindIndex(record => record.Track.Id == item.Track.Id);
-        if (index >= 0)
-        {
-            _records[index] = _records[index] with { IsFavorite = item.IsFavorite };
-        }
-        ApplyFilter();
-    }
 
     private static bool Matches(MusicTrack track, string query) =>
         track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||

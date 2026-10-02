@@ -49,6 +49,34 @@
 
         <Border Classes="sky-settings-section">
           <StackPanel Spacing="14">
+            <TextBlock Text="歌词与字体" Classes="sky-section-title" />
+            <TextBlock Text="导入本地 TTF / OTF 字体并选择默认值，自动保存，无需安装系统字体。歌词页和桌面歌词均可单独切换字体；选择跟随默认时使用此处设置。"
+                       Classes="sky-caption" TextWrapping="Wrap" />
+            <Button Content="导入字体…" Click="ImportFont_OnClick" Theme="{StaticResource SkyCommandButtonTheme}" HorizontalAlignment="Left"
+                    IsEnabled="{Binding !Playback.LyricFonts.IsImporting}" />
+            <StackPanel DataContext="{Binding Playback.LyricFonts}" Spacing="12">
+              <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="12">
+                <TextBlock Text="歌词页默认字体" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Fonts}" SelectedItem="{Binding LyricsFont, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Grid.Row="1" Text="桌面歌词默认字体" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Fonts}" SelectedItem="{Binding DesktopFont, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+              <TextBlock Text="{Binding Status}" Classes="sky-caption" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="显示 / 关闭桌面歌词" Command="{Binding Playback.ToggleDesktopLyricsCommand}" Theme="{StaticResource SkyCommandButtonTheme}" />
+              <Button Content="解锁桌面歌词" IsVisible="{Binding Playback.IsDesktopLyricsLocked}"
+                      Command="{Binding Playback.ToggleDesktopLyricsLockCommand}" Theme="{StaticResource SkyCommandButtonTheme}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="sky-settings-section">
+          <StackPanel Spacing="14">
             <TextBlock Text="外部工具" Classes="sky-section-title" />
             <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,10,Auto,10,Auto">
               <TextBlock Text="FFmpeg" Classes="sky-card-title" VerticalAlignment="Center" />

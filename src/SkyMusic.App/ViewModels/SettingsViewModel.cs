@@ -38,8 +38,10 @@ public sealed class SettingsViewModel : ObservableObject
         IFfmpegService ffmpeg,
         Action openKeyMapping,
         Func<string, Func<Task>, Task>? saveLibrarySettings = null,
-        Func<Task>? scanLibrary = null)
+        Func<Task>? scanLibrary = null,
+        PlaybackViewModel? playback = null)
     {
+        Playback = playback;
         _store = store;
         _settings = settings;
         _ffmpeg = ffmpeg;
@@ -78,6 +80,7 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     public ObservableCollection<PerformanceModeOption> PerformanceModes { get; }
+    public PlaybackViewModel? Playback { get; }
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand DetectFfmpegCommand { get; }
     public RelayCommand OpenKeyMappingCommand { get; }

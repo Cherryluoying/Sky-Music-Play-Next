@@ -43,7 +43,7 @@ public sealed partial class SkyMiniPlayer : UserControl
         }
     }
 
-    private void PlayerSurface_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private async void PlayerSurface_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Handled || DataContext is not PlaybackViewModel playback || !playback.HasTrack ||
             e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
@@ -58,7 +58,10 @@ public sealed partial class SkyMiniPlayer : UserControl
             return;
         }
 
-        playback.OpenPlayerCommand.Execute(null);
         e.Handled = true;
+        PlayerSurface.Opacity = .86;
+        playback.OpenPlayerCommand.Execute(null);
+        await Task.Delay(90);
+        PlayerSurface.Opacity = 1;
     }
 }

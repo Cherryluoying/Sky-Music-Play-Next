@@ -21,6 +21,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     private bool _applyingSnapshot;
     private int _currentLyricIndex = -1;
     private bool _isDesktopLyricsVisible;
+    private bool _isDesktopLyricsLocked;
     private CancellationTokenSource? _lyricsRequest;
     private readonly IMediaLibraryStore? _libraryStore;
     private readonly IScorePlaybackController? _scoreController;
@@ -105,8 +106,11 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         string? localLyricsDirectory = null,
         IInstrumentPluginHost? instrumentPluginHost = null,
         IReadOnlyList<string>? vst3SearchPaths = null,
-        string? lyricsAppearancePath = null)
+        string? lyricsAppearancePath = null,
+        string? lyricFontsDirectory = null)
     {
+        LyricFonts = new LyricFontSettings(lyricFontsDirectory);
+        LyricFonts.PropertyChanged += OnLyricFontsChanged;
         LyricsAppearance = new LyricsAppearance(lyricsAppearancePath);
         LyricsAppearance.PropertyChanged += OnLyricsAppearanceChanged;
         _player = player;
@@ -146,10 +150,12 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         });
         ToggleDesktopLyricsCommand = new RelayCommand(_ =>
             SetDesktopLyricsVisible(!IsDesktopLyricsVisible));
+        ToggleDesktopLyricsLockCommand = new RelayCommand(_ => IsDesktopLyricsLocked = !IsDesktopLyricsLocked,
+            _ => IsDesktopLyricsVisible && OperatingSystem.IsWindows());
         ToggleFavoriteCommand = new AsyncRelayCommand(
             parameter => ToggleFavoriteAsync(parameter as TrackItemViewModel),
             parameter => parameter is TrackItemViewModel,
-            _ => { });
+            SetPlaybackError);
         AdjustIntervalCommand = new AsyncRelayCommand(
             parameter => AdjustTimingAsync(int.TryParse(parameter?.ToString(), out var value) ? value : 0, 0),
             _ => _scoreController is not null,
@@ -213,6 +219,12 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<LyricLineViewModel> Lyrics { get; } = [];
     public LyricsAppearance LyricsAppearance { get; }
+    public LyricFontSettings LyricFonts { get; }
+
+    private void OnLyricFontsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LyricFontSettings.EffectiveLyricsFont)) OnPropertyChanged(nameof(LyricsAppearance));
+    }
 
     private void OnLyricsAppearanceChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -239,6 +251,24 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public RelayCommand OpenPlayerCommand { get; }
 
     public RelayCommand ToggleDesktopLyricsCommand { get; }
+
+    public RelayCommand ToggleDesktopLyricsLockCommand { get; }
+
+    // 锁定属于桌面歌词窗口状态；主播放器和悬浮球提供同一个解锁入口。
+    public bool IsDesktopLyricsLocked
+    {
+        get => _isDesktopLyricsLocked;
+        internal set
+        {
+            if (!SetProperty(ref _isDesktopLyricsLocked, value)) return;
+            OnPropertyChanged(nameof(DesktopLyricsLockGlyph));
+            OnPropertyChanged(nameof(DesktopLyricsLockHint));
+        }
+    }
+
+    public string DesktopLyricsLockGlyph => IsDesktopLyricsLocked ? "\uE72E" : "\uE785";
+    public string DesktopLyricsLockHint => IsDesktopLyricsLocked
+        ? "解锁桌面歌词，恢复拖动和按钮操作" : "锁定桌面歌词（鼠标穿透），点击歌词右下方小锁可解锁";
 
     public AsyncRelayCommand ToggleFavoriteCommand { get; }
 
@@ -601,6 +631,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (!isVisible) IsDesktopLyricsLocked = false;
+        ToggleDesktopLyricsLockCommand.NotifyCanExecuteChanged();
         DesktopLyricsVisibilityChanged?.Invoke(isVisible);
     }
 
@@ -863,9 +895,13 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             return;
         }
 
-        item.IsFavorite = !item.IsFavorite;
+        var isFavorite = !item.IsFavorite;
         await _libraryStore.UpsertAsync(item.Track, null);
-        await _libraryStore.SetFavoriteAsync(item.Track.Id, item.IsFavorite);
+        await _libraryStore.SetFavoriteAsync(item.Track.Id, isFavorite);
+        // 写入成功后再更新 UI，队列与当前歌曲可能是不同对象，但必须展示相同收藏状态。
+        item.IsFavorite = isFavorite;
+        foreach (var queued in Queue.Where(track => track.Track.Id == item.Track.Id)) queued.IsFavorite = isFavorite;
+        if (CurrentItem?.Track.Id == item.Track.Id) CurrentItem.IsFavorite = isFavorite;
         MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -1122,6 +1158,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         _disposed = true;
         LyricsAppearance.PropertyChanged -= OnLyricsAppearanceChanged;
         LyricsAppearance.Dispose();
+        LyricFonts.PropertyChanged -= OnLyricFontsChanged;
+        LyricFonts.Dispose();
         _playbackRequest?.Cancel();
         _seekRequest?.Cancel();
         _lyricsRequest?.Cancel();

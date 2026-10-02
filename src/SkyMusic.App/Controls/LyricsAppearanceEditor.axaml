@@ -1,0 +1,40 @@
+<!-- 模块：普通歌词页与全屏共用的外观面板，绑定同一份自动保存的排版设置。 -->
+<UserControl x:Class="SkyMusic.App.Controls.LyricsAppearanceEditor" x:Name="EditorRoot"
+             xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Width="290" Spacing="12">
+      <TextBlock Text="歌词外观" FontSize="17" FontWeight="Bold" />
+      <StackPanel DataContext="{Binding FontSettings, ElementName=EditorRoot}" Spacing="6">
+        <TextBlock Text="歌词字体" />
+        <ComboBox x:Name="PageFontSelector" ItemsSource="{Binding PageFontOptions}"
+                  SelectedItem="{Binding PageFont, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="歌词字体">
+          <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" /></DataTemplate></ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBlock Text="页内字体本次运行有效，不改变默认值；更多字体可在设置中导入。" FontSize="12" TextWrapping="Wrap" />
+      </StackPanel>
+      <Grid ColumnDefinitions="*,132" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+        <TextBlock Text="全屏上下留白（%）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Column="1" Minimum="5" Maximum="40" Increment="1" Value="{Binding FullScreenPaddingPercent, Mode=TwoWay}"
+                       ToolTip.Tip="上下各自占歌词区域的比例，越大显示的歌词越少" />
+        <TextBlock Grid.Row="1" Text="字号（px）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="18" Maximum="56" Increment="1" Value="{Binding FontSize, Mode=TwoWay}" />
+        <TextBlock Grid.Row="2" Text="当前句字重" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Weights}" SelectedIndex="{Binding CurrentWeightIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+        <TextBlock Grid.Row="3" Text="其他句字重" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Weights}" SelectedIndex="{Binding OtherWeightIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+        <TextBlock Grid.Row="4" Text="字间距（px）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="8" Increment="0.5" Value="{Binding LetterSpacing, Mode=TwoWay}" />
+        <TextBlock Grid.Row="5" Text="句间距（px）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="64" Increment="2" Value="{Binding LineSpacing, Mode=TwoWay}" />
+        <TextBlock Grid.Row="6" Text="译文间距（px）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="24" Increment="1" Value="{Binding TranslationSpacing, Mode=TwoWay}" />
+        <TextBlock Grid.Row="7" Text="译文字号（%）" VerticalAlignment="Center" />
+        <NumericUpDown Grid.Row="7" Grid.Column="1" Minimum="60" Maximum="100" Increment="5" Value="{Binding TranslationSizePercent, Mode=TwoWay}" />
+      </Grid>
+      <TextBlock Text="字号、间距等排版设置实时预览并自动保存。" FontSize="12" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding SaveError}" Foreground="#C43C39" FontSize="12" TextWrapping="Wrap" />
+      <Button Content="恢复默认" Command="{Binding ResetCommand}" Theme="{StaticResource SkyCommandButtonTheme}" HorizontalAlignment="Left" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

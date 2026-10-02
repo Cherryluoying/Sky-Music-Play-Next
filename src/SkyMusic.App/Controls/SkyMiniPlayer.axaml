@@ -71,6 +71,9 @@
   <Border x:Name="PlayerSurface" Classes="mini-shell"
           Classes.player-open="{Binding DataContext.IsPlayerVisible, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
           PointerPressed="PlayerSurface_OnPointerPressed">
+    <Border.Transitions>
+      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.14" /></Transitions>
+    </Border.Transitions>
     <Grid RowDefinitions="10,*">
       <controls:SkyProgressBar Grid.Row="0" Classes="mini-progress"
                                IsEnabled="{Binding CanSeek}"
@@ -168,6 +171,10 @@
                   Classes.active="{Binding IsDesktopLyricsVisible}"
                   Command="{Binding ToggleDesktopLyricsCommand}"
                   Content="词" FontFamily="Microsoft YaHei UI" FontSize="13" ToolTip.Tip="桌面歌词" />
+          <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
+                  IsVisible="{Binding IsDesktopLyricsLocked}" Command="{Binding ToggleDesktopLyricsLockCommand}"
+                  Content="{Binding DesktopLyricsLockGlyph}" ToolTip.Tip="{Binding DesktopLyricsLockHint}"
+                  AutomationProperties.Name="解锁桌面歌词" />
           <Button Theme="{StaticResource SkyIconButtonTheme}" Classes="player-secondary"
                   Content="{Binding PlaybackModeGlyph}" Command="{Binding CyclePlaybackModeCommand}"
                   ToolTip.Tip="{Binding PlaybackModeText}" />

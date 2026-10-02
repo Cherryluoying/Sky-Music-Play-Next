@@ -1,5 +1,5 @@
 <!-- 模块：透明单句桌面歌词；悬停才显示气泡控制，外观设置不影响主播放器。 -->
-<Window x:Class="SkyMusic.App.Views.DesktopLyricsWindow"
+<Window x:Class="SkyMusic.App.Views.DesktopLyricsWindow" x:Name="DesktopRoot"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:SkyMusic.App.Controls"
@@ -9,6 +9,7 @@
         MaxWidth="1000"
         CanResize="False"
         ShowInTaskbar="False"
+        ShowActivated="False"
         WindowDecorations="None"
         TransparencyLevelHint="Transparent"
         Background="Transparent"
@@ -106,6 +107,17 @@
             <ScrollViewer MaxHeight="480" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
               <StackPanel x:Name="AppearancePanel" Width="300" Spacing="12">
                 <TextBlock Text="桌面歌词外观" FontSize="16" FontWeight="Bold" />
+                <!-- 字体选择取自播放视图模型，其他外观控件仍使用独立的桌面歌词排版设置。 -->
+                <StackPanel DataContext="{Binding DataContext.LyricFonts, ElementName=DesktopRoot}" Spacing="6">
+                  <TextBlock Text="歌词字体" />
+                  <ComboBox x:Name="DesktopFontSelector" ItemsSource="{Binding PageFontOptions}"
+                            SelectedItem="{Binding DesktopSessionFont, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="桌面歌词字体">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" /></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBlock Text="本次运行有效，不改变默认值；更多字体可在应用设置中导入。"
+                             FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
+                </StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                   <TextBlock Text="字体大小" />
                   <TextBlock Grid.Column="1" Text="{Binding FontSize, StringFormat={}{0:0} px}" />
@@ -172,6 +184,9 @@
       </Button>
       <Button x:Name="CloseButton" Theme="{StaticResource DesktopBubble}" Content="&#xE711;"
               Click="Close_OnClick" ToolTip.Tip="关闭桌面歌词，继续播放" AutomationProperties.Name="关闭桌面歌词" />
+      <Button x:Name="LockButton" Theme="{StaticResource DesktopBubble}" Content="{Binding DesktopLyricsLockGlyph}"
+              Command="{Binding ToggleDesktopLyricsLockCommand}" ToolTip.Tip="{Binding DesktopLyricsLockHint}"
+              AutomationProperties.Name="锁定桌面歌词，播放器或悬浮窗可解锁" />
     </StackPanel>
     <Grid RowDefinitions="*,Auto">
     <controls:DesktopLyricText x:Name="LyricText" Margin="8,4,8,0" Cursor="SizeAll"

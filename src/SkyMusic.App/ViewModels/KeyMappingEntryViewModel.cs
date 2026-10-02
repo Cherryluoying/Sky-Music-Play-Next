@@ -1,4 +1,6 @@
 // 模块：SkyMusic.App 界面状态 KeyMappingEntryViewModel
+using SkyMusic.App.Services;
+
 namespace SkyMusic.App.ViewModels;
 
 public sealed class KeyMappingEntryViewModel : ObservableObject
@@ -36,6 +38,22 @@ public sealed class KeyMappingEntryViewModel : ObservableObject
     {
         get => _isExtended;
         set => SetProperty(ref _isExtended, value);
+    }
+
+    // 未知历史键位仍保留原始值，打开/保存界面不会静默改成 A。
+    public IEnumerable<KeyboardKey> KeyOptions => KeyboardKeyCatalog.Keys.Contains(SelectedKey)
+        ? KeyboardKeyCatalog.Keys : KeyboardKeyCatalog.Keys.Append(SelectedKey);
+
+    public KeyboardKey SelectedKey
+    {
+        get => KeyboardKeyCatalog.FromScanCode(ScanCode, IsExtended);
+        set
+        {
+            if (value is null || value == SelectedKey) return;
+            ScanCode = value.ScanCode;
+            IsExtended = value.IsExtended;
+            OnPropertyChanged();
+        }
     }
 
     public string NoteName

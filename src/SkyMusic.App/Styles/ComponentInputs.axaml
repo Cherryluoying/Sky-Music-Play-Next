@@ -98,7 +98,7 @@
   <Style Selector="Border.sky-search">
     <Setter Property="Height" Value="38" />
     <Setter Property="Background" Value="{StaticResource SkyBrushSurfaceSecondary}" />
-    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="#BDC5D0" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="19" />
   </Style>

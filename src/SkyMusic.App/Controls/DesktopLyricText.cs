@@ -25,6 +25,14 @@ public sealed class DesktopLyricText : Control
     public double Progress => _progress;
     public double FontScale { get; set; } = 1;
 
+    public void ApplyFont(FontFamily family)
+    {
+        if (_typeface.FontFamily == family) return;
+        _typeface = new Typeface(family, _typeface.Style, _typeface.Weight);
+        _geometry = null;
+        InvalidateVisual();
+    }
+
     // 只显示当前句，长句整体缩放到窗口宽度，不换行、不显示下一句。
     public void SetFrame(string text, double progress)
     {

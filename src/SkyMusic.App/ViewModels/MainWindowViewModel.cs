@@ -17,7 +17,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly MidiStudioViewModel _midiStudio;
     private readonly ScoreEditorViewModel _scoreEditor;
     private readonly TranscriptionViewModel _transcription;
-    private readonly MacroRunnerViewModel _macroRunner;
     private readonly LibraryViewModel _library;
     private AppPage _currentPage = AppPage.Discover;
     private object _currentPageViewModel;
@@ -39,9 +38,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         IKeyMappingStore keyMappingStore,
         IReadOnlyList<SkyMusic.Core.Mapping.KeyMappingDefinition> keyMappings,
         ITranscriptionAdapter transcriptionAdapter,
-        IMacroScriptImporter macroImporter,
-        IMacroPlaybackSession macroSession,
-        IGameWindowService gameWindowService,
         IInstrumentPluginHost instrumentPluginHost,
         IAppSettingsStore appSettingsStore,
         AppSettings appSettings,
@@ -76,7 +72,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             await _tasks.ImportFileAsync(midiPath);
             NavigateTo(AppPage.Tasks, true);
         });
-        _macroRunner = new MacroRunnerViewModel(macroImporter, macroSession, gameWindowService);
         _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback, appSettingsStore);
         var settings = new SettingsViewModel(
             appSettingsStore,
@@ -89,7 +84,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                 var storage = (await appSettingsStore.LoadAsync()).Storage;
                 Playback.SetLocalLyricsDirectory(Path.Combine(MediaLibraryDirectories.Root(storage), "lyrics"));
                 await _library.ScanConfiguredDirectoriesAsync();
-            });
+            }, Playback);
         Settings = settings;
 
         var discover = new DiscoverViewModel(catalog, coverImages, Playback, mediaLibraryStore);
@@ -107,7 +102,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                 keyMappings,
                 mappings => scorePlaybackController.ReloadCustomKeyMappingsAsync(mappings).AsTask()),
             [AppPage.Transcription] = _transcription,
-            [AppPage.MacroRunner] = _macroRunner,
             [AppPage.Settings] = settings
         };
         _currentPageViewModel = discover;
@@ -118,11 +112,10 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         var midiItem = new NavigationItemViewModel("MIDI 工作台", "\uE9D9", AppPage.MidiStudio);
         var scoreEditorItem = new NavigationItemViewModel("谱面编辑", "\uE70F", AppPage.ScoreEditor);
         var transcriptionItem = new NavigationItemViewModel("音频转 MIDI", "\uE8D4", AppPage.Transcription);
-        var macroItem = new NavigationItemViewModel("宏脚本", "\uE756", AppPage.MacroRunner);
 
         DiscoveryNavigationItems = [discoverItem, libraryItem];
         PerformanceNavigationItems = [midiItem];
-        ToolNavigationItems = [scoreEditorItem, transcriptionItem, macroItem];
+        ToolNavigationItems = [scoreEditorItem, transcriptionItem];
         PrimaryNavigationItems =
         [
             discoverItem,
@@ -130,8 +123,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             tasksItem,
             midiItem,
             scoreEditorItem,
-            transcriptionItem,
-            macroItem
+            transcriptionItem
         ];
         MusicNavigationItems =
         [
@@ -354,7 +346,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _tasks.Dispose();
         // 先停止播放器向 VST 主机发送 MIDI 音符，再释放工作台共用的插件主机。
         _transcription.Dispose();
-        _macroRunner.Dispose();
         _library.Dispose();
         Playback.Dispose();
         _midiStudio.Dispose();

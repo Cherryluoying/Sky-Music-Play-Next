@@ -12,6 +12,6 @@ public enum AppPage
     ScoreEditor,
     KeyMapping,
     Transcription,
-    MacroRunner,
-    Settings
+    // 保留原有设置页编号，已移除宏脚本页面。
+    Settings = 10
 }

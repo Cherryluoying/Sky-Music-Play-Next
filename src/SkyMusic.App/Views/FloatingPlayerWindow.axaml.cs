@@ -7,6 +7,8 @@ using SkyMusic.App.ViewModels;
 using SkyMusic.App.Services;
 using Avalonia.VisualTree;
 using System.Runtime.InteropServices;
+using Avalonia.Media;
+using Avalonia.Media.Transformation;
 
 namespace SkyMusic.App.Views;
 
@@ -21,6 +23,7 @@ public sealed partial class FloatingPlayerWindow : Window
     private int _sectionRequest;
     private Point _ballOffset;
     private nint _previousForeground;
+    private CancellationTokenSource? _bubbleMotion;
     public bool IsExpanded => Bubble.IsVisible;
 
     // 无参构造仅供 Avalonia 资源加载与设计器，运行时由主窗口注入共享播放状态。
@@ -43,6 +46,7 @@ public sealed partial class FloatingPlayerWindow : Window
         Closed += (_, _) =>
         {
             _closed = true;
+            _bubbleMotion?.Cancel();
             _viewModel.Tracks.CollectionChanged -= Tracks_OnChanged;
             Win32Properties.RemoveWndProcHookCallback(this, WindowMessage);
             _viewModel.Dispose();
@@ -75,7 +79,24 @@ public sealed partial class FloatingPlayerWindow : Window
     {
         if (IsExpanded) { Collapse(); return; }
         SetExpanded(true);
+        RevealBubble();
         await _viewModel.RefreshAsync();
+    }
+
+    // 球保持固定屏幕位置，只对气泡内容做短距离滑入；收起会取消在途动画。
+    private async void RevealBubble()
+    {
+        _bubbleMotion?.Cancel();
+        var motion = new CancellationTokenSource();
+        _bubbleMotion = motion;
+        Bubble.RenderTransform = new TranslateTransform();
+        try { await SurfaceMotion.SlideAsync(Bubble, 10, 0, motion.Token); }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            if (_bubbleMotion == motion) _bubbleMotion = null;
+            motion.Dispose();
+        }
     }
 
     private void SetExpanded(bool expanded)
@@ -108,6 +129,7 @@ public sealed partial class FloatingPlayerWindow : Window
 
     public void Collapse()
     {
+        _bubbleMotion?.Cancel();
         SetInputMode(false);
         SetExpanded(false);
     }
@@ -158,6 +180,18 @@ public sealed partial class FloatingPlayerWindow : Window
 
     private void Collapse_OnClick(object? sender, RoutedEventArgs e) => Collapse();
 
+    private void Lyrics_OnClick(object? sender, RoutedEventArgs e)
+    {
+        SetInputMode(false);
+        _viewModel.Playback.ToggleDesktopLyricsCommand.Execute(null);
+    }
+
+    private void Favorite_OnClick(object? sender, RoutedEventArgs e)
+    {
+        SetInputMode(false);
+        _viewModel.Playback.ToggleFavoriteCommand.Execute(_viewModel.Playback.CurrentItem);
+    }
+
     // 禁止整个 HWND 被普通鼠标操作激活，覆盖拖动、布局调整和控件内部激活路径。
     // 只有搜索/数值文字输入临时解除；结束输入后把前台还给之前的游戏窗口。
     private void SetInputMode(bool enabled)
@@ -204,6 +238,7 @@ public sealed partial class FloatingPlayerWindow : Window
         _pressPoint = this.PointToScreen(e.GetPosition(this));
         _dragOrigin = GetBallPosition();
         _dragging = false;
+        FloatingBall.RenderTransform = TransformOperations.Parse("scale(0.9)");
         e.Pointer.Capture(FloatingBall);
         e.Handled = true;
     }
@@ -222,6 +257,7 @@ public sealed partial class FloatingPlayerWindow : Window
     {
         if (_pressPoint is null) return;
         var wasDragging = _dragging;
+        FloatingBall.RenderTransform = TransformOperations.Parse("scale(1)");
         _pressPoint = null;
         e.Pointer.Capture(null);
         if (wasDragging) PlaceAtBall(GetBallPosition(), IsExpanded);
@@ -229,5 +265,9 @@ public sealed partial class FloatingPlayerWindow : Window
         e.Handled = true;
     }
 
-    private void Ball_OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e) => _pressPoint = null;
+    private void Ball_OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _pressPoint = null;
+        FloatingBall.RenderTransform = TransformOperations.Parse("scale(1)");
+    }
 }

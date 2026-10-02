@@ -27,6 +27,7 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
         _store = store;
         _covers = covers;
         Playback = playback;
+        Playback.MediaLibraryChanged += OnMediaLibraryChanged;
     }
 
     public PlaybackViewModel Playback { get; }
@@ -127,5 +128,14 @@ public sealed class FloatingPlayerViewModel : ObservableObject, IDisposable
         track.Album.Contains(query, StringComparison.OrdinalIgnoreCase) ||
         track.Author.Contains(query, StringComparison.OrdinalIgnoreCase);
 
-    public void Dispose() => _lifetime.Cancel();
+    private async void OnMediaLibraryChanged(object? sender, EventArgs e)
+    {
+        if (!_lifetime.IsCancellationRequested && ShowsTracks) await RefreshAsync();
+    }
+
+    public void Dispose()
+    {
+        Playback.MediaLibraryChanged -= OnMediaLibraryChanged;
+        _lifetime.Cancel();
+    }
 }

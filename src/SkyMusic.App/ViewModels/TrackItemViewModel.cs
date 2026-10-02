@@ -77,11 +77,13 @@ public sealed class TrackItemViewModel : ObservableObject
             if (SetProperty(ref _isFavorite, value))
             {
                 OnPropertyChanged(nameof(FavoriteGlyph));
+                OnPropertyChanged(nameof(FavoriteHint));
             }
         }
     }
 
     public string FavoriteGlyph => IsFavorite ? "\uEB52" : "\uEB51";
+    public string FavoriteHint => IsFavorite ? "取消喜欢" : "标记为我喜欢的";
 
     public int DisplayIndex { get; }
 

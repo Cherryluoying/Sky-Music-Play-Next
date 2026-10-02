@@ -1,0 +1,15 @@
+<!-- 模块：锁定歌词的解锁热区；独立 HWND 保持可点击，歌词正文仍完全鼠标穿透。 -->
+<Window x:Class="SkyMusic.App.Views.DesktopLyricsUnlockWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="44" Height="44" CanResize="False" WindowDecorations="None" ShowInTaskbar="False" ShowActivated="False"
+        Topmost="True" Background="Transparent" TransparencyLevelHint="Transparent" WindowStartupLocation="Manual" Title="解锁桌面歌词">
+  <Window.Styles>
+    <Style Selector="ToolTip"><Setter Property="Foreground" Value="White" /><Setter Property="Background" Value="#FF202631" /></Style>
+    <Style Selector="ToolTip TextBlock"><Setter Property="Foreground" Value="White" /></Style>
+  </Window.Styles>
+  <Button x:Name="UnlockButton" Click="Unlock_OnClick" Focusable="False" Background="#ED202631" BorderBrush="#60FFFFFF"
+          BorderThickness="1" CornerRadius="22" Padding="0" ToolTip.Tip="解锁桌面歌词" AutomationProperties.Name="解锁桌面歌词">
+    <TextBlock Text="&#xE785;" FontFamily="Segoe Fluent Icons" Foreground="White" FontSize="18"
+               VerticalAlignment="Center" HorizontalAlignment="Center" />
+  </Button>
+</Window>

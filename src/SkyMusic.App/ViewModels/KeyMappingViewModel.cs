@@ -13,7 +13,7 @@ public sealed class KeyMappingViewModel : ObservableObject
     private KeyMappingProfileItemViewModel? _selectedProfile;
     private string _mappingName = "自定义映射";
     private string _processNames = "";
-    private string _statusText = "映射使用 Windows 扫描码，保存后立即生效";
+    private string _statusText = "选择键盘按键，保存后立即生效";
 
     public KeyMappingViewModel(
         IKeyMappingStore store,
@@ -88,7 +88,7 @@ public sealed class KeyMappingViewModel : ObservableObject
     public bool CanEditProfile => SelectedProfile?.CanEdit != false;
 
     public string SelectedProfileDescription => SelectedProfile?.Description
-        ?? "新建一个自定义方案，然后为每个 MIDI 音符填写 Windows 扫描码。";
+        ?? "新建一个自定义方案，然后为每个 MIDI 音符选择键盘按键。";
 
     public string SelectedProcessNames => SelectedProfile?.ProcessNames ?? string.Empty;
 

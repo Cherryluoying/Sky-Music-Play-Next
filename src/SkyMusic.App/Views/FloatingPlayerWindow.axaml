@@ -38,13 +38,14 @@
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="IconSurface" CornerRadius="10" Background="{TemplateBinding Background}">
-            <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontFamily="Segoe Fluent Icons"
+            <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontFamily="Segoe Fluent Icons"
                        FontSize="{TemplateBinding FontSize}" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
         </ControlTemplate>
       </Setter>
       <Style Selector="^:pointerover /template/ Border#IconSurface"><Setter Property="Background" Value="#26FFFFFF" /></Style>
       <Style Selector="^.selected /template/ Border#IconSurface"><Setter Property="Background" Value="#38FFFFFF" /></Style>
+      <Style Selector="^.favorite"><Setter Property="Foreground" Value="#FF7186" /></Style>
       <Style Selector="^:pressed /template/ Border#IconSurface"><Setter Property="Background" Value="#50FFFFFF" /></Style>
       <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35" /></Style>
     </ControlTheme>
@@ -172,7 +173,7 @@
         <Grid Grid.Row="4" RowDefinitions="20,*">
           <TextBlock Text="{Binding Playback.CurrentItem.Title, FallbackValue=尚未选择歌曲}" Foreground="#C9FFFFFF"
                      TextAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" />
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
             <Button Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.PlaybackModeGlyph}"
                     Command="{Binding Playback.CyclePlaybackModeCommand}" ToolTip.Tip="{Binding Playback.PlaybackModeText}" />
             <Button x:Name="PreviousButton" Theme="{StaticResource FloatingIcon}" Content="&#xE892;"
@@ -181,6 +182,15 @@
                     Background="#25FFFFFF" Click="Transport_OnClick" Tag="play" ToolTip.Tip="播放 / 暂停" AutomationProperties.Name="播放或暂停" />
             <Button x:Name="NextButton" Theme="{StaticResource FloatingIcon}" Content="&#xE893;"
                     Click="Transport_OnClick" Tag="next" ToolTip.Tip="下一首" AutomationProperties.Name="下一首" />
+            <Button x:Name="LyricsButton" Theme="{StaticResource FloatingIcon}" Content="&#xE8BA;"
+                    Classes.selected="{Binding Playback.IsDesktopLyricsVisible}" Click="Lyrics_OnClick"
+                    ToolTip.Tip="显示 / 关闭桌面歌词" AutomationProperties.Name="显示或关闭桌面歌词" />
+            <Button Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.CurrentItem.FavoriteGlyph, FallbackValue=&#xEB51;}"
+                    Classes.favorite="{Binding Playback.CurrentItem.IsFavorite}" Click="Favorite_OnClick"
+                    IsEnabled="{Binding Playback.HasTrack}" ToolTip.Tip="{Binding Playback.CurrentItem.FavoriteHint}" AutomationProperties.Name="喜欢或取消喜欢" />
+            <Button Theme="{StaticResource FloatingIcon}" Content="{Binding Playback.DesktopLyricsLockGlyph}"
+                    IsVisible="{Binding Playback.IsDesktopLyricsLocked}" Command="{Binding Playback.ToggleDesktopLyricsLockCommand}"
+                    ToolTip.Tip="{Binding Playback.DesktopLyricsLockHint}" AutomationProperties.Name="解锁桌面歌词" />
           </StackPanel>
         </Grid>
       </Grid>
@@ -189,6 +199,9 @@
             Cursor="Hand" PointerPressed="Ball_OnPointerPressed" PointerMoved="Ball_OnPointerMoved"
             PointerReleased="Ball_OnPointerReleased" PointerCaptureLost="Ball_OnPointerCaptureLost"
             ToolTip.Tip="单击打开演奏控制 · 拖动移动" AutomationProperties.Name="悬浮演奏球">
+      <Border.Transitions>
+        <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" /></Transitions>
+      </Border.Transitions>
       <Image Source="avares://SkyMusic.App/Assets/floating-window.png" Stretch="Uniform" />
     </Border>
   </Grid>

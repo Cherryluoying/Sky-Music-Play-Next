@@ -10,6 +10,8 @@ using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SkyMusic.App.Controls;
 using SkyMusic.App.ViewModels;
+using SkyMusic.App.Services;
+using Avalonia.Media;
 
 namespace SkyMusic.App.Views;
 
@@ -19,6 +21,7 @@ public sealed partial class MainWindow : Window
     private DesktopLyricsWindow? _desktopLyricsWindow;
     private WorkbenchWindow? _workbenchWindow;
     private FloatingPlayerWindow? _floatingWindow;
+    private CancellationTokenSource? _playerMotion;
     public static readonly StyledProperty<bool> IsLyricsFullScreenProperty =
         AvaloniaProperty.Register<MainWindow, bool>(nameof(IsLyricsFullScreen));
     public bool IsLyricsFullScreen { get => GetValue(IsLyricsFullScreenProperty); private set => SetValue(IsLyricsFullScreenProperty, value); }
@@ -28,33 +31,47 @@ public sealed partial class MainWindow : Window
     private WindowState _beforeFullScreen;
     private PixelPoint _beforeFullScreenPosition;
     private Size _beforeFullScreenSize;
-    private CornerRadius _beforeFullScreenCorner;
+    private readonly CornerRadius _normalCorner;
+    private readonly SurfaceVisibilityMotion _miniReveal;
     private bool _pointerAtPlayer;
+    private bool _pointerAtTop;
     private IPointer? _fullscreenPointer;
     private readonly DispatcherTimer _hidePlayerTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
 
     public MainWindow()
     {
         InitializeComponent();
+        _normalCorner = ShellBorder.CornerRadius;
+        _miniReveal = new SurfaceVisibilityMotion(MiniPlayer, 100);
         DataContextChanged += OnDataContextChanged;
         Closed += OnClosed;
-        Opened += (_, _) => UpdateFloatingWindow();
+        Opened += (_, _) => { UpdateFloatingWindow(); UpdateWindowChrome(); };
         AddHandler(KeyDownEvent, FullScreen_OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerMovedEvent, FullScreen_OnPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
-        PointerExited += (_, _) => { if (IsLyricsFullScreen) { _pointerAtPlayer = false; _hidePlayerTimer.Start(); } };
+        PointerExited += (_, _) => { if (IsLyricsFullScreen) { _pointerAtPlayer = _pointerAtTop = false; _hidePlayerTimer.Start(); } };
         _hidePlayerTimer.Tick += (_, _) =>
         {
             // 滑块拖动和气泡操作期间保留播放器，避免控制区消失中断交互。
-            if (_pointerAtPlayer || _fullscreenPointer?.Captured is not null ||
-                MiniPlayer.GetVisualDescendants().OfType<Button>().Any(button => button.Flyout?.IsOpen == true)) return;
-            MiniPlayer.IsVisible = !IsLyricsFullScreen;
-            _hidePlayerTimer.Stop();
+            var holdingPlayer = _fullscreenPointer?.Captured is not null ||
+                MiniPlayer.GetVisualDescendants().OfType<Button>().Any(button => button.Flyout?.IsOpen == true);
+            if (!_pointerAtPlayer && !holdingPlayer) _miniReveal.SetVisible(!IsLyricsFullScreen);
+            if (!_pointerAtTop && !PlayerPage.HasOpenAppearancePopup) PlayerPage.ShowFullScreenSettings(false);
+            if (!holdingPlayer && !PlayerPage.HasOpenAppearancePopup) _hidePlayerTimer.Stop();
         };
         PropertyChanged += (_, e) =>
         {
-            if (e.Property == WindowStateProperty && IsLyricsFullScreen && WindowState != WindowState.FullScreen)
-                ExitLyricsFullScreen();
+            if (e.Property != WindowStateProperty) return;
+            if (IsLyricsFullScreen && WindowState != WindowState.FullScreen) ExitLyricsFullScreen();
+            UpdateWindowChrome();
         };
+    }
+
+    // 最大化/全屏贴合屏幕边缘，还原普通窗口时恢复品牌圆角与缩放热区。
+    private void UpdateWindowChrome()
+    {
+        var normal = WindowState == WindowState.Normal && !IsLyricsFullScreen;
+        ShellBorder.CornerRadius = normal ? _normalCorner : default;
+        foreach (var grip in this.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("resize-grip"))) grip.IsVisible = normal;
     }
 
     // 使用原生全屏状态覆盖任务栏；保留原来的普通/最大化状态，不创建第二套播放器。
@@ -66,15 +83,14 @@ public sealed partial class MainWindow : Window
         _beforeFullScreen = WindowState;
         _beforeFullScreenPosition = Position;
         _beforeFullScreenSize = ClientSize;
-        _beforeFullScreenCorner = ShellBorder.CornerRadius;
         IsLyricsFullScreen = true;
         LyricsFullScreenGlyph = "\uE73F";
         TitleChrome.IsVisible = false;
-        ShellBorder.CornerRadius = default;
-        foreach (var grip in this.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("resize-grip"))) grip.IsVisible = false;
-        _pointerAtPlayer = false;
-        MiniPlayer.IsVisible = false;
+        _pointerAtPlayer = _pointerAtTop = false;
+        _miniReveal.SetVisible(false, false);
+        PlayerPage.ShowFullScreenSettings(false, false);
         WindowState = WindowState.FullScreen;
+        UpdateWindowChrome();
     }
 
     private void ExitLyricsFullScreen()
@@ -85,9 +101,8 @@ public sealed partial class MainWindow : Window
         _hidePlayerTimer.Stop();
         _fullscreenPointer = null;
         TitleChrome.IsVisible = true;
-        MiniPlayer.IsVisible = true;
-        ShellBorder.CornerRadius = _beforeFullScreenCorner;
-        foreach (var grip in this.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("resize-grip"))) grip.IsVisible = true;
+        _miniReveal.SetVisible(true, false);
+        PlayerPage.ShowFullScreenSettings(false, false);
         WindowState = _beforeFullScreen;
         if (_beforeFullScreen == WindowState.Normal)
         {
@@ -95,6 +110,7 @@ public sealed partial class MainWindow : Window
             Height = _beforeFullScreenSize.Height;
             Position = _beforeFullScreenPosition;
         }
+        UpdateWindowChrome();
     }
 
     private void FullScreen_OnKeyDown(object? sender, KeyEventArgs e)
@@ -108,13 +124,46 @@ public sealed partial class MainWindow : Window
         _fullscreenPointer = e.Pointer;
         var point = e.GetPosition(this);
         _pointerAtPlayer = point.Y >= ClientSize.Height - 104 && point.Y <= ClientSize.Height;
-        if (_pointerAtPlayer) { _hidePlayerTimer.Stop(); MiniPlayer.IsVisible = true; }
-        else if (MiniPlayer.IsVisible && !_hidePlayerTimer.IsEnabled) _hidePlayerTimer.Start();
+        _pointerAtTop = point.Y >= 0 && point.Y <= 72;
+        if (_pointerAtPlayer) _miniReveal.SetVisible(true);
+        if (_pointerAtTop) PlayerPage.ShowFullScreenSettings(true);
+        if (_miniReveal.IsShown || PlayerPage.IsFullScreenSettingsShown)
+        {
+            // 从最近一次鼠标移动重新计时，避免刚离开底部就遇到旧计时器的隐藏帧。
+            _hidePlayerTimer.Stop();
+            _hidePlayerTimer.Start();
+        }
     }
 
     private void FullScreenContext_OnChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (IsLyricsFullScreen && (_viewModel?.IsPlayerVisible != true || _viewModel.Playback.ShowsLyrics != true)) ExitLyricsFullScreen();
+        if (sender == _viewModel && e.PropertyName == nameof(MainWindowViewModel.IsPlayerVisible)) UpdatePlayerPresentation();
+    }
+
+    // 页面保持挂载到退场结束；取消过渡后从当前渲染位置继续，快速点击不会产生可见性竞态。
+    private async void UpdatePlayerPresentation()
+    {
+        var show = _viewModel?.IsPlayerVisible == true;
+        var distance = Math.Max(300, ClientSize.Height);
+        var from = PlayerPage.IsVisible && PlayerPage.RenderTransform is TranslateTransform current ? current.Y : distance;
+        _playerMotion?.Cancel();
+        var motion = new CancellationTokenSource();
+        _playerMotion = motion;
+        PlayerPage.RenderTransform = new TranslateTransform(0, show ? 0 : distance);
+        PlayerPage.IsHitTestVisible = show;
+        PlayerPage.IsVisible = true;
+        try
+        {
+            await SurfaceMotion.SlideAsync(PlayerPage, from, show ? 0 : distance, motion.Token);
+            if (!motion.IsCancellationRequested) PlayerPage.IsVisible = show;
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            if (_playerMotion == motion) _playerMotion = null;
+            motion.Dispose();
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -140,6 +189,7 @@ public sealed partial class MainWindow : Window
             _viewModel.Settings.PropertyChanged += OnSettingsChanged;
         }
         if (IsVisible) UpdateFloatingWindow();
+        if (_viewModel?.IsPlayerVisible == true || PlayerPage.IsVisible) UpdatePlayerPresentation();
     }
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -291,6 +341,8 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _playerMotion?.Cancel();
+        _miniReveal.Dispose();
         _hidePlayerTimer.Stop();
         if (_viewModel is not null)
         {

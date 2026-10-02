@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SkyMusic.App.ViewModels;
+using SkyMusic.App.Services;
 
 namespace SkyMusic.App.Views;
 
@@ -23,6 +24,8 @@ public sealed partial class DesktopLyricsWindow : Window
     private bool _closed;
     private bool _dirty;
     private int _openPopovers;
+    private DesktopLyricsInputMode? _inputMode;
+    private DesktopLyricsUnlockWindow? _unlockWindow;
 
     public DesktopLyricsWindow() : this(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -44,6 +47,9 @@ public sealed partial class DesktopLyricsWindow : Window
         DataContextChanged += OnDataContextChanged;
         Opened += OnOpened;
         Closed += OnClosed;
+        PositionChanged += (_, _) => PositionUnlockWindow();
+        SizeChanged += (_, _) => PositionUnlockWindow();
+        if (OperatingSystem.IsWindows()) Win32Properties.AddWndProcHookCallback(this, WindowMessage);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -56,7 +62,9 @@ public sealed partial class DesktopLyricsWindow : Window
             _playback.PropertyChanged += Playback_OnChanged;
             _playback.Lyrics.CollectionChanged += Lyrics_OnChanged;
             _playback.Queue.CollectionChanged += Queue_OnChanged;
+            _playback.LyricFonts.PropertyChanged += Fonts_OnChanged;
         }
+        ApplyFont();
         SynchronizeClock();
         Queue_OnChanged(null, null);
     }
@@ -67,12 +75,18 @@ public sealed partial class DesktopLyricsWindow : Window
         _playback.PropertyChanged -= Playback_OnChanged;
         _playback.Lyrics.CollectionChanged -= Lyrics_OnChanged;
         _playback.Queue.CollectionChanged -= Queue_OnChanged;
+        _playback.LyricFonts.PropertyChanged -= Fonts_OnChanged;
         _playback = null;
     }
 
     private void OnOpened(object? sender, EventArgs e)
     {
         _isOpen = true;
+        if (OperatingSystem.IsWindows() && TryGetPlatformHandle()?.Handle is { } hwnd)
+        {
+            _inputMode = new DesktopLyricsInputMode(hwnd);
+            ApplyLockState();
+        }
         SynchronizeClock();
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen is null) return;
@@ -93,6 +107,9 @@ public sealed partial class DesktopLyricsWindow : Window
         _frameTimer.Stop();
         _saveTimer.Stop();
         _positionClock.Stop();
+        _unlockWindow?.Close();
+        _unlockWindow = null;
+        if (OperatingSystem.IsWindows()) Win32Properties.RemoveWndProcHookCallback(this, WindowMessage);
         QueueButton.Flyout?.Hide();
         SettingsButton.Flyout?.Hide();
         _appearance.PropertyChanged -= Appearance_OnChanged;
@@ -102,11 +119,24 @@ public sealed partial class DesktopLyricsWindow : Window
 
     private void Playback_OnChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PlaybackViewModel.IsDesktopLyricsLocked)) ApplyLockState();
         if (e.PropertyName is nameof(PlaybackViewModel.PositionSeconds) or nameof(PlaybackViewModel.IsPlaying)
             or nameof(PlaybackViewModel.CurrentItem))
             SynchronizeClock();
         else if (e.PropertyName is nameof(PlaybackViewModel.CurrentLyricIndex) or nameof(PlaybackViewModel.DurationSeconds))
             RenderFrame();
+    }
+
+    private void Fonts_OnChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LyricFontSettings.EffectiveDesktopFont)) ApplyFont();
+    }
+
+    private void ApplyFont()
+    {
+        var family = _playback?.LyricFonts.EffectiveDesktopFont.Family ?? LyricFontSettings.DefaultFamily;
+        LyricText.ApplyFont(family);
+        TranslationText.ApplyFont(family);
     }
 
     private void Lyrics_OnChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderFrame();
@@ -200,8 +230,61 @@ public sealed partial class DesktopLyricsWindow : Window
 
     private void SetControlsVisible(bool visible)
     {
+        visible &= _playback?.IsDesktopLyricsLocked != true;
         HoverControls.Opacity = visible ? 1 : 0;
         HoverControls.IsHitTestVisible = visible;
+    }
+
+    // 穿透后正文窗口不能接收解锁点击；独立热区与主播放器共用同一个解锁命令。
+    private void ApplyLockState()
+    {
+        if (_inputMode is null) return;
+        try
+        {
+            _inputMode.SetLocked(_playback?.IsDesktopLyricsLocked == true);
+            if (_playback?.IsDesktopLyricsLocked == true)
+            {
+                QueueButton.Flyout?.Hide();
+                SettingsButton.Flyout?.Hide();
+                FocusManager?.Focus(null);
+                if (_isOpen && _unlockWindow is null)
+                {
+                    _unlockWindow = new DesktopLyricsUnlockWindow();
+                    _unlockWindow.UnlockRequested += (_, _) => _playback?.ToggleDesktopLyricsLockCommand.Execute(null);
+                    PositionUnlockWindow();
+                    _unlockWindow.Show(this);
+                }
+            }
+            else { _unlockWindow?.Close(); _unlockWindow = null; }
+            UpdateControlsVisibility();
+        }
+        catch (Win32Exception ex)
+        {
+            Trace.TraceError($"桌面歌词输入模式切换失败：{ex.Message}");
+            if (_playback is not null && _playback.IsDesktopLyricsLocked) _playback.IsDesktopLyricsLocked = false;
+        }
+    }
+
+    // 解锁按钮停在歌词窗口右下方的控制区，不覆盖文字，跨屏移动与字号调整时跟随。
+    private void PositionUnlockWindow()
+    {
+        if (_unlockWindow is null) return;
+        var point = this.PointToScreen(new Point(Math.Max(0, Bounds.Width - 54), Math.Max(0, Bounds.Height - 48)));
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen is not null)
+        {
+            var size = (int)Math.Ceiling(44 * screen.Scaling);
+            point = new PixelPoint(Math.Clamp(point.X, screen.WorkingArea.X, Math.Max(screen.WorkingArea.X, screen.WorkingArea.Right - size)),
+                Math.Clamp(point.Y, screen.WorkingArea.Y, Math.Max(screen.WorkingArea.Y, screen.WorkingArea.Bottom - size)));
+        }
+        _unlockWindow.Position = point;
+    }
+
+    private nint WindowMessage(nint hwnd, uint message, nint wParam, nint lParam, ref bool handled)
+    {
+        if (message == 0x0021 && _playback?.IsDesktopLyricsLocked == true)
+        { handled = true; return 3; } // WM_MOUSEACTIVATE：锁定时不能抢游戏焦点。
+        return 0;
     }
 
     private void Surface_OnPointerPressed(object? sender, PointerPressedEventArgs e)
