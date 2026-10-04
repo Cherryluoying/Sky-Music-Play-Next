@@ -8,6 +8,8 @@
 
   <p>面向 Windows 的音乐播放、MIDI、钢琴练习、游戏乐器辅助与编谱工作区</p>
 
+  [预览](./view.md)
+
   <p>
     <a href="https://github.com/Cherryluoying/Sky-Music-Play-Next"><img alt="Repository" src="https://img.shields.io/badge/GitHub-Sky--Music--Play--Next-181717?style=flat-square&logo=github"></a>
     <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square">
