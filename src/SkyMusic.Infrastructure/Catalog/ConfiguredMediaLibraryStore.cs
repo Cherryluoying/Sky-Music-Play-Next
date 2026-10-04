@@ -8,6 +8,8 @@ namespace SkyMusic.Infrastructure.Catalog;
 
 public sealed class ConfiguredMediaLibraryStore(IAppSettingsStore settings, string? defaultRoot = null) : IMediaLibraryStore
 {
+    public Task SetCustomCoverAsync(string trackId, string coverPath, CancellationToken cancellationToken = default)
+        => UseAsync(store => store.SetCustomCoverAsync(trackId, coverPath, cancellationToken), cancellationToken);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private SqliteMediaLibraryStore? _active;
     private string? _activePath;

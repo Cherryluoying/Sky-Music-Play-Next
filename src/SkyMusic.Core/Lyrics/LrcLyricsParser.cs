@@ -16,7 +16,8 @@ public static partial class LrcLyricsParser
         CancellationToken cancellationToken = default)
     {
         var content = await File.ReadAllTextAsync(Path.GetFullPath(path), cancellationToken);
-        return Parse(content);
+        return Path.GetExtension(path).Equals(".srt", StringComparison.OrdinalIgnoreCase)
+            ? SrtLyricsParser.Parse(content) : Parse(content);
     }
 
     public static IReadOnlyList<LyricLine> Parse(string content)

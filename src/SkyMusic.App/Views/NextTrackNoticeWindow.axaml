@@ -1,0 +1,13 @@
+<!-- 模块：演奏切歌提示；透明窗口仅承载黑底白字气泡，不激活、不拦截游戏输入。 -->
+<Window x:Class="SkyMusic.App.Views.NextTrackNoticeWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="340" Height="84" CanResize="False" ShowActivated="False" ShowInTaskbar="False"
+        WindowDecorations="None" TransparencyLevelHint="Transparent" Background="Transparent"
+        Topmost="True" WindowStartupLocation="Manual" Title="即将播放下一首" IsHitTestVisible="False">
+  <Border x:Name="NoticeSurface" Background="#F0181818" CornerRadius="14" Padding="18,12" Margin="0,10">
+    <StackPanel Spacing="3">
+      <TextBlock Text="即将播放下一首" Foreground="White" FontSize="12" Opacity="0.75" />
+      <TextBlock x:Name="TrackTitle" Foreground="White" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+  </Border>
+</Window>

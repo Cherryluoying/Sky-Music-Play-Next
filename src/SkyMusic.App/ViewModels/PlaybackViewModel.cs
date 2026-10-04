@@ -1,6 +1,8 @@
 // 模块：SkyMusic.App 界面状态 PlaybackViewModel
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
+using Avalonia.Media.Imaging;
+using SkyMusic.App.Services;
 using SkyMusic.Core.Models;
 using SkyMusic.Core.Lyrics;
 using SkyMusic.Core.Plugins;
@@ -12,6 +14,7 @@ namespace SkyMusic.App.ViewModels;
 public sealed class PlaybackViewModel : ObservableObject, IDisposable
 {
     private readonly IPlaybackController _player;
+    private readonly CoverImageService _customCovers = new();
     private readonly SemaphoreSlim _playbackGate = new(1, 1);
     private readonly ILyricsProvider? _lyricsProvider;
     private TrackItemViewModel? _currentItem;
@@ -47,6 +50,17 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     private bool _completionHandled;
     private int _playGeneration;
     private bool _autoAdvanceArmed;
+    private CancellationTokenSource? _advanceRequest;
+    private string? _upcomingTrackTitle;
+    private bool _isTransitionPending;
+    // 所有媒体自然接续统一预留 1.5 秒；不阻塞 UI，也不占用实时音频线程。
+    public static TimeSpan TrackTransitionDelay { get; } = TimeSpan.FromMilliseconds(1500);
+    public string? UpcomingTrackTitle { get => _upcomingTrackTitle; private set => SetProperty(ref _upcomingTrackTitle, value); }
+    public bool IsTransitionPending
+    {
+        get => _isTransitionPending;
+        private set { if (SetProperty(ref _isTransitionPending, value)) OnPropertyChanged(nameof(PlayGlyph)); }
+    }
     private int _queueCategoryIndex;
     public IReadOnlyList<string> Categories => MediaCategoryFilter.Labels;
     public int QueueCategoryIndex { get => _queueCategoryIndex; set { if (SetProperty(ref _queueCategoryIndex, value)) OnPropertyChanged(nameof(VisibleQueue)); } }
@@ -56,7 +70,14 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public QueuePlaybackMode PlaybackMode
     {
         get => _playbackMode;
-        set { if (SetProperty(ref _playbackMode, value)) { OnPropertyChanged(nameof(PlaybackModeText)); OnPropertyChanged(nameof(PlaybackModeGlyph)); } }
+        set
+        {
+            if (!SetProperty(ref _playbackMode, value)) return;
+            OnPropertyChanged(nameof(PlaybackModeText));
+            OnPropertyChanged(nameof(PlaybackModeGlyph));
+            // 等待期间切换循环/随机模式，以最新模式重新选择并刷新提示。
+            if (IsTransitionPending) _ = MoveTrackAsync(1, true);
+        }
     }
     public string PlaybackModeText => PlaybackMode switch { QueuePlaybackMode.RepeatOne => "单曲循环", QueuePlaybackMode.Shuffle => "随机播放", _ => "歌单循环" };
     public string PlaybackModeGlyph => PlaybackMode switch { QueuePlaybackMode.RepeatOne => "\uE8ED", QueuePlaybackMode.Shuffle => "\uE8B1", _ => "\uE8EE" };
@@ -510,7 +531,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         ? Lyrics[CurrentLyricIndex + 1].Text
         : CurrentItem?.Artist ?? string.Empty;
 
-    public string PlayGlyph => IsPlaying ? "\uE769" : "\uE768";
+    public string PlayGlyph => IsPlaying || IsTransitionPending ? "\uE769" : "\uE768";
 
     public string PositionText => TimeSpan.FromSeconds(PositionSeconds).ToString(@"mm\:ss");
 
@@ -526,11 +547,11 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public void PlayFromCollection(TrackItemViewModel item, IEnumerable<TrackItemViewModel> tracks)
     {
-        var context = tracks.ToArray();
+        var context = item.Kind == MediaKind.Score ? [item] : tracks.ToArray();
         _queueContextSelected = true;
         _queueOrder.Replace(context.Select(track => track.Track.Id));
         RebuildQueue(context);
-        PlayTrack(item);
+        _ = PlayTrackAsync(item);
     }
 
     // 只更新队列中的展示数据，保留用户安排的下一首和已经移除的曲目状态。
@@ -545,7 +566,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             if (items.TryGetValue(id, out var track))
             {
                 track.IsSelected = string.Equals(id, currentId, StringComparison.OrdinalIgnoreCase);
-                Queue.Add(new TrackItemViewModel(track.Track, track.Cover, item => PlayTrack(item),
+                Queue.Add(new TrackItemViewModel(track.Track, track.Cover, item => _ = PlayTrackAsync(item),
                     item => _ = ToggleFavoriteAsync(item), track.IsFavorite) { IsSelected = track.IsSelected });
             }
         }
@@ -563,23 +584,42 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     public void PlayNext(TrackItemViewModel item)
     {
+        var reschedule = IsTransitionPending;
+        CancelPendingAdvance();
         _queueOrder.AddNext(item.Track.Id);
         RebuildQueue([item]);
+        if (reschedule) _ = MoveTrackAsync(1, true);
     }
 
     public void RemoveFromQueue(TrackItemViewModel item)
     {
+        // 待播队列变化时重新选择，已移除的乐谱不能在倒计时结束后继续演奏。
+        var reschedule = IsTransitionPending;
+        CancelPendingAdvance();
         _queueOrder.Remove(item.Track.Id);
         Queue.Remove(item);
+        if (reschedule) _ = MoveTrackAsync(1, true);
     }
 
-    public void PlayTrack(TrackItemViewModel item, bool autoplay = true) =>
+    public void PlayTrack(TrackItemViewModel item, bool autoplay = true)
+    {
+        if (item.Kind == MediaKind.Score)
+        {
+            _queueContextSelected = true;
+            _queueOrder.Replace([item.Track.Id]);
+            RebuildQueue([item]);
+        }
         _ = PlayTrackAsync(item, autoplay);
+    }
 
     // 双击和快速切歌共用一个请求入口：取消旧请求并串行切换后端，避免多个自动演奏会话互相等待。
-    public async Task PlayTrackAsync(TrackItemViewModel item, bool autoplay = true)
+    public Task PlayTrackAsync(TrackItemViewModel item, bool autoplay = true) => PlayTrackCoreAsync(item, autoplay, false);
+
+    private async Task PlayTrackCoreAsync(TrackItemViewModel item, bool autoplay, bool keepTransitionNotice)
     {
         ArgumentNullException.ThrowIfNull(item);
+        if (_disposed) return;
+        CancelPendingAdvance(clearNotice: !keepTransitionNotice);
         var request = new CancellationTokenSource();
         var previousRequest = Interlocked.Exchange(ref _playbackRequest, request);
         previousRequest?.Cancel();
@@ -618,6 +658,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             if (ReferenceEquals(Interlocked.CompareExchange(ref _playbackRequest, null, request), request))
             {
                 IsPlaybackLoading = false;
+                UpcomingTrackTitle = null;
                 if (!_disposed && PlaybackError is null) ApplySnapshot(_player.Snapshot);
             }
             request.Dispose();
@@ -683,7 +724,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         LoadPreferredLyrics(item.Track);
     }
 
-    // 导入 LRC/TXT，复制到媒体库并把关联路径持久化到当前曲目。
+    // 导入 LRC/SRT/TXT，保留格式扩展名，重启后仍按正确解析器加载。
     public void SetLocalLyricsDirectory(string directory) => _localLyricsDirectory = Path.GetFullPath(directory);
 
     public async Task ImportLocalLyricsAsync(string sourcePath)
@@ -696,6 +737,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         try
         {
             PlaybackError = null;
+            var importedItem = CurrentItem;
             var lines = await LrcLyricsParser.ParseFileAsync(sourcePath);
             if (lines.Count == 0)
             {
@@ -703,10 +745,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             }
 
             Directory.CreateDirectory(_localLyricsDirectory);
-            var extension = Path.GetExtension(sourcePath).Equals(".lrc", StringComparison.OrdinalIgnoreCase)
-                ? ".lrc"
-                : ".txt";
-            var targetPath = Path.Combine(_localLyricsDirectory, $"{CurrentItem.Track.Id}{extension}");
+            var extension = Path.GetExtension(sourcePath).ToLowerInvariant() switch { ".lrc" => ".lrc", ".srt" => ".srt", _ => ".txt" };
+            var targetPath = Path.Combine(_localLyricsDirectory, $"{importedItem.Track.Id}{extension}");
             if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
             {
                 await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 16 * 1024, true);
@@ -714,8 +754,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
                 await source.CopyToAsync(target);
             }
 
-            _lyricsRequest?.Cancel();
-            var updatedTrack = CurrentItem.Track with
+            var updatedTrack = importedItem.Track with
             {
                 Lyrics = lines,
                 LyricsSourcePath = targetPath
@@ -724,9 +763,14 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             {
                 item.UpdateTrack(updatedTrack);
             }
-            CurrentItem.UpdateTrack(updatedTrack);
-            ReplaceLyrics(lines);
-            UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds), true);
+            importedItem.UpdateTrack(updatedTrack);
+            if (CurrentItem?.Track.Id == updatedTrack.Id)
+            {
+                _lyricsRequest?.Cancel();
+                CurrentItem.UpdateTrack(updatedTrack);
+                ReplaceLyrics(lines);
+                UpdateCurrentLyric(TimeSpan.FromSeconds(PositionSeconds), true);
+            }
             if (_libraryStore is not null)
             {
                 await _libraryStore.UpsertAsync(updatedTrack, null);
@@ -859,6 +903,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     // 悬浮搜索必须先暂停前台键盘演奏，再让搜索框获取输入焦点。
     public async Task PauseForTextInputAsync()
     {
+        CancelPendingAdvance();
         await _playbackGate.WaitAsync();
         try
         {
@@ -870,6 +915,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
 
     private async Task TogglePlayAsync()
     {
+        if (IsTransitionPending) { CancelPendingAdvance(); return; }
         try
         {
             PlaybackError = null;
@@ -913,13 +959,58 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // Clear 会通过 ComboBox 的双向绑定清空选择，先保存宿主实际加载项和候选项。
+        var active = _instrumentPluginHost.Snapshot.State == InstrumentHostState.Loaded ? _instrumentPluginHost.Snapshot.Plugin : null;
+        var preferred = active ?? SelectedInstrumentPlugin;
+        var plugins = _instrumentPluginHost.DiscoverPlugins(_vst3SearchPaths).ToList();
+        if (active is not null && !plugins.Any(plugin => SamePlugin(plugin, active))) plugins.Add(active);
         InstrumentPlugins.Clear();
-        foreach (var plugin in _instrumentPluginHost.DiscoverPlugins(_vst3SearchPaths))
+        foreach (var plugin in plugins)
         {
             InstrumentPlugins.Add(plugin);
         }
 
-        SelectedInstrumentPlugin ??= InstrumentPlugins.FirstOrDefault();
+        SelectedInstrumentPlugin = InstrumentPlugins.FirstOrDefault(plugin => preferred is not null && SamePlugin(plugin, preferred))
+            ?? InstrumentPlugins.FirstOrDefault();
+        OpenInstrumentEditorCommand.NotifyCanExecuteChanged();
+    }
+
+    private static bool SamePlugin(InstrumentPluginInfo left, InstrumentPluginInfo right) =>
+        string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(left.Path, right.Path, StringComparison.OrdinalIgnoreCase);
+
+    public void ReportCoverError(string message) => PlaybackError = $"封面设置失败：{message}";
+
+    // 图片解码及缩放放到后台，保存独立 PNG 副本，不修改音频标签或乐谱源文件。
+    public async Task SetCustomCoverAsync(TrackItemViewModel item, string imagePath)
+    {
+        if (_disposed || !item.CanCustomizeCover || _libraryStore is null) return;
+        try
+        {
+            PlaybackError = null;
+            var directory = Path.Combine(Path.GetDirectoryName(_localLyricsDirectory)!, "covers");
+            var destination = Path.Combine(directory, $"user-cover-{Guid.NewGuid():N}.png");
+            await Task.Run(() =>
+            {
+                var info = new FileInfo(imagePath);
+                if (info.Length > 32 * 1024 * 1024) throw new InvalidDataException("封面文件不能超过 32 MB。");
+                using var input = File.OpenRead(imagePath);
+                using var bitmap = Bitmap.DecodeToWidth(input, 1024);
+                Directory.CreateDirectory(directory);
+                using var output = File.Create(destination);
+                bitmap.Save(output, PngBitmapEncoderOptions.Default);
+            });
+            if (_disposed) return;
+            await _libraryStore.UpsertAsync(item.Track, null);
+            await _libraryStore.SetCustomCoverAsync(item.Track.Id, destination);
+            if (_disposed) return;
+            var cover = _customCovers.GetCover(destination);
+            var affected = Queue.Concat(RecentTracks).Append(item);
+            if (CurrentItem is not null) affected = affected.Append(CurrentItem);
+            foreach (var track in affected.Where(track => track.Track.Id == item.Track.Id).Distinct()) track.UpdateCover(destination, cover);
+            MediaLibraryChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex) { ReportCoverError(ex.Message); }
     }
 
     private async Task LoadInstrumentPluginAsync()
@@ -1000,22 +1091,54 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(RandomReleaseMilliseconds));
     });
 
-    private Task MoveTrackAsync(int offset, bool automatic = false)
+    // 等待可以被暂停、切歌、跳转或退出取消；提示只针对演奏接续，不抢游戏焦点。
+    private async Task MoveTrackAsync(int offset, bool automatic = false)
     {
-        if (Queue.Count == 0)
-        {
-            return Task.CompletedTask;
-        }
-
+        CancelPendingAdvance();
+        if (_disposed || Queue.Count == 0) return;
+        if (automatic && IsScore && Queue.Count == 1 && Queue[0].Track.Id == CurrentTrack?.Id && PlaybackMode != QueuePlaybackMode.RepeatOne) return;
         var id = _queueOrder.Next(PlaybackMode, offset, automatic);
         var next = Queue.FirstOrDefault(item => string.Equals(item.Track.Id, id, StringComparison.OrdinalIgnoreCase));
-        return next is null ? Task.CompletedTask : PlayTrackAsync(next, true);
+        if (next is null) return;
+        if (!automatic) { await PlayTrackAsync(next); return; }
+        var request = new CancellationTokenSource();
+        _advanceRequest = request;
+        IsTransitionPending = true;
+        UpcomingTrackTitle = IsScore || next.Kind == MediaKind.Score ? next.Title : null;
+        try
+        {
+            await Task.Delay(TrackTransitionDelay, request.Token);
+            request.Token.ThrowIfCancellationRequested();
+            if (_disposed || !Queue.Any(item => item.Track.Id == next.Track.Id)) return;
+            // 先解除等待所有权，避免播放入口取消自身；提示保留到下一首实际开始或失败。
+            _advanceRequest = null;
+            IsTransitionPending = false;
+            await PlayTrackCoreAsync(next, true, true);
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested) { }
+        catch (Exception ex) { PlaybackError = ex.Message; }
+        finally
+        {
+            if (ReferenceEquals(_advanceRequest, request)) CancelPendingAdvance();
+            request.Dispose();
+        }
+    }
+
+    private void CancelPendingAdvance(bool clearNotice = true)
+    {
+        var pending = _advanceRequest;
+        _advanceRequest = null;
+        pending?.Cancel();
+        if (pending is not null) _autoAdvanceArmed = false;
+        IsTransitionPending = false;
+        if (clearNotice) UpcomingTrackTitle = null;
     }
 
     // 拖动进度条时只保留最后一次跳转，避免高频 Seek 堵塞自动演奏控制器。
     private void QueueSeek(TimeSpan position)
     {
         if (_disposed || !CanSeek) return;
+        CancelPendingAdvance();
         PlaybackError = null;
         var request = new CancellationTokenSource();
         var previousRequest = Interlocked.Exchange(ref _seekRequest, request);
@@ -1098,7 +1221,7 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
             {
                 _completionHandled = true;
                 var generation = _playGeneration;
-                Dispatcher.UIThread.Post(() => { if (!_disposed && generation == _playGeneration && CurrentTrack?.Id == snapshot.Track?.Id && _player.Snapshot.State == PlaybackState.Stopped) _ = MoveTrackAsync(1, true); });
+                Dispatcher.UIThread.Post(() => { if (!_disposed && _autoAdvanceArmed && generation == _playGeneration && CurrentTrack?.Id == snapshot.Track?.Id && _player.Snapshot.State == PlaybackState.Stopped) _ = MoveTrackAsync(1, true); });
             }
             if (snapshot.State == PlaybackState.Playing) { _autoAdvanceArmed = true; _completionHandled = false; }
             else if (snapshot.State == PlaybackState.Paused) _autoAdvanceArmed = false;
@@ -1156,6 +1279,8 @@ public sealed class PlaybackViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        _customCovers.Dispose();
+        CancelPendingAdvance();
         LyricsAppearance.PropertyChanged -= OnLyricsAppearanceChanged;
         LyricsAppearance.Dispose();
         LyricFonts.PropertyChanged -= OnLyricFontsChanged;

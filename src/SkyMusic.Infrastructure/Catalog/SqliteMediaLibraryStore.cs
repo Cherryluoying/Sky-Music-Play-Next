@@ -49,6 +49,10 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
                 FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_tracks_favorite ON tracks(is_favorite);
+            CREATE TABLE IF NOT EXISTS custom_track_covers (
+                track_id TEXT PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
+                cover_path TEXT NOT NULL
+            );
             CREATE INDEX IF NOT EXISTS idx_tracks_recent ON tracks(last_played_utc DESC);
             CREATE INDEX IF NOT EXISTS idx_playlist_order ON playlist_items(playlist_id, sort_index);
             CREATE TABLE IF NOT EXISTS media_file_index (
@@ -88,7 +92,8 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT t.id, t.title, t.artist, t.author, t.album, t.cover_source,
+            SELECT t.id, t.title, t.artist, t.author, t.album,
+                   COALESCE((SELECT cover_path FROM custom_track_covers WHERE track_id = t.id), t.cover_source),
                    t.source_path, t.media_kind, t.duration_ticks, t.is_favorite,
                    t.last_played_utc, t.play_count, t.lyrics_path
             FROM playlist_items p
@@ -107,7 +112,8 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT id, title, artist, author, album, cover_source,
+            SELECT id, title, artist, author, album,
+                   COALESCE((SELECT cover_path FROM custom_track_covers WHERE track_id = tracks.id), cover_source),
                    source_path, media_kind, duration_ticks, is_favorite,
                    last_played_utc, play_count, lyrics_path
             FROM tracks
@@ -230,6 +236,24 @@ public sealed class SqliteMediaLibraryStore(string databasePath) : IMediaLibrary
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    // 自定义封面单独保存，自动扫描及历史更新无法覆盖；MIDI 在存储边界也拒绝设置。
+    public async Task SetCustomCoverAsync(string trackId, string coverPath, CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO custom_track_covers(track_id, cover_path)
+            SELECT id, $cover FROM tracks WHERE id = $id AND media_kind <> $midi
+            ON CONFLICT(track_id) DO UPDATE SET cover_path = excluded.cover_path;
+            """;
+        command.Parameters.AddWithValue("$id", trackId);
+        command.Parameters.AddWithValue("$cover", coverPath);
+        command.Parameters.AddWithValue("$midi", (int)MediaKind.Midi);
+        if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
+            throw new InvalidOperationException("曲目不存在或 MIDI 不支持自定义封面。");
     }
 
     // 后台补读标签只更新展示元数据，不覆盖并发写入的喜欢、历史、歌词或歌单关系。

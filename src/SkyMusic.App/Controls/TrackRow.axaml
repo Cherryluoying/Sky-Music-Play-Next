@@ -2,6 +2,11 @@
 <UserControl x:Class="SkyMusic.App.Controls.TrackRow"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <UserControl.ContextMenu>
+    <ContextMenu>
+      <MenuItem Header="自定义封面…" IsVisible="{Binding CanCustomizeCover}" Click="CustomizeCover_OnClick" />
+    </ContextMenu>
+  </UserControl.ContextMenu>
   <Grid ColumnDefinitions="36,50,*,130,52,40,40">
     <TextBlock Text="{Binding DisplayIndexText}" Classes="sky-caption" VerticalAlignment="Center" HorizontalAlignment="Center" />
     <Button Grid.Column="1" Grid.ColumnSpan="4" Theme="{StaticResource SkyTrackRowTheme}" Classes.selected="{Binding IsSelected}"

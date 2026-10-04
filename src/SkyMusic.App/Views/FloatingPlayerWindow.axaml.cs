@@ -25,6 +25,9 @@ public sealed partial class FloatingPlayerWindow : Window
     private nint _previousForeground;
     private CancellationTokenSource? _bubbleMotion;
     public bool IsExpanded => Bubble.IsVisible;
+    // 供切歌提示定位使用，返回猫爪的屏幕像素区域，不改变悬浮窗布局。
+    public PixelRect BallScreenBounds => new(GetBallPosition(),
+        new PixelSize((int)Math.Round(64 * RenderScaling), (int)Math.Round(64 * RenderScaling)));
 
     // 无参构造仅供 Avalonia 资源加载与设计器，运行时由主窗口注入共享播放状态。
     public FloatingPlayerWindow() => InitializeComponent();

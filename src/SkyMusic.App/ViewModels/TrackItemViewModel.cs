@@ -67,6 +67,16 @@ public sealed class TrackItemViewModel : ObservableObject
     public string Author => string.IsNullOrWhiteSpace(Track.Author) ? Artist : Track.Author;
 
     public MediaKind Kind => Track.Kind;
+    public bool CanCustomizeCover => Kind is MediaKind.Audio or MediaKind.Score;
+
+    // 同步当前曲目与列表封面，清除旧的延迟加载委托，防止再次读回旧图。
+    public void UpdateCover(string source, Bitmap? bitmap)
+    {
+        UpdateTrack(Track with { CoverSource = source });
+        _loadCover = null;
+        _cover = bitmap;
+        OnPropertyChanged(nameof(Cover));
+    }
     public string KindText => Kind switch { MediaKind.Score => "乐谱", MediaKind.Midi => "MIDI", _ => "音乐" };
 
     public bool IsFavorite

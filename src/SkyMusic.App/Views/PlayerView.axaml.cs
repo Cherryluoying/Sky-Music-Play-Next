@@ -102,7 +102,7 @@ public sealed partial class PlayerView : UserControl
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("歌词文件") { Patterns = ["*.lrc", "*.txt"] }
+                new FilePickerFileType("歌词文件（LRC / SRT / TXT）") { Patterns = ["*.lrc", "*.srt", "*.txt"] }
             ]
         });
         var path = files.FirstOrDefault()?.TryGetLocalPath();

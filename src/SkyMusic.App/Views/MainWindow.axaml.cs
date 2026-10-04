@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private DesktopLyricsWindow? _desktopLyricsWindow;
     private WorkbenchWindow? _workbenchWindow;
     private FloatingPlayerWindow? _floatingWindow;
+    private NextTrackNoticeWindow? _nextTrackNotice;
     private CancellationTokenSource? _playerMotion;
     public static readonly StyledProperty<bool> IsLyricsFullScreenProperty =
         AvaloniaProperty.Register<MainWindow, bool>(nameof(IsLyricsFullScreen));
@@ -137,6 +138,12 @@ public sealed partial class MainWindow : Window
 
     private void FullScreenContext_OnChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_viewModel is { } viewModel && sender == viewModel.Playback && e.PropertyName == nameof(PlaybackViewModel.UpcomingTrackTitle))
+        {
+            var title = viewModel.Playback.UpcomingTrackTitle;
+            if (title is not null) _nextTrackNotice ??= new NextTrackNoticeWindow(() => _floatingWindow);
+            _nextTrackNotice?.SetTrack(title);
+        }
         if (IsLyricsFullScreen && (_viewModel?.IsPlayerVisible != true || _viewModel.Playback.ShowsLyrics != true)) ExitLyricsFullScreen();
         if (sender == _viewModel && e.PropertyName == nameof(MainWindowViewModel.IsPlayerVisible)) UpdatePlayerPresentation();
     }
@@ -168,6 +175,8 @@ public sealed partial class MainWindow : Window
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        _nextTrackNotice?.Close();
+        _nextTrackNotice = null;
         if (_viewModel is not null)
         {
             _viewModel.PropertyChanged -= FullScreenContext_OnChanged;
@@ -341,6 +350,8 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _nextTrackNotice?.Close();
+        _nextTrackNotice = null;
         _playerMotion?.Cancel();
         _miniReveal.Dispose();
         _hidePlayerTimer.Stop();

@@ -49,6 +49,15 @@ bool parseRequest(const std::string& line, Request& request, std::string& error)
     request.note = readInt(document, "note");
     request.velocity = readInt(document, "velocity");
     request.channel = readInt(document, "channel");
+    if (request.type == "midi")
+    {
+        const auto kind = readInt(document, "kind"), data1 = readInt(document, "data1"), data2 = readInt(document, "data2");
+        if (!kind || !data1 || !data2 || !request.channel || *kind < 0 || *kind > 6 ||
+            *request.channel < 0 || *request.channel > 15 || *data1 < 0 ||
+            *data1 > (*kind == 3 ? 16383 : 127) || *data2 < 0 || *data2 > 127)
+        { error = "invalid realtime MIDI channel message"; return false; }
+        request.midi = {0, *kind, *data1, *data2, *request.channel};
+    }
     if (request.type == "sequence")
     {
         const auto events = document.FindMember("events");

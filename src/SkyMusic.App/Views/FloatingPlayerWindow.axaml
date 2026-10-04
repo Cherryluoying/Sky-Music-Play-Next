@@ -94,6 +94,8 @@
                     Classes.selected="{Binding IsPlaylist}" Click="Section_OnClick" ToolTip.Tip="本地歌单" AutomationProperties.Name="本地歌单" />
             <Button x:Name="FavoritesTab" Theme="{StaticResource FloatingIcon}" Content="&#xEB51;" Tag="favorites"
                     Classes.selected="{Binding IsFavorites}" Click="Section_OnClick" ToolTip.Tip="我喜欢的" AutomationProperties.Name="我喜欢的" />
+            <Button x:Name="ImportedTab" Theme="{StaticResource FloatingIcon}" Content="&#xE8B7;" Tag="imported"
+                    Classes.selected="{Binding IsImported}" Click="Section_OnClick" ToolTip.Tip="已导入：音乐、乐谱、MIDI" AutomationProperties.Name="已导入" />
             <Button x:Name="SearchTab" Theme="{StaticResource FloatingIcon}" Content="&#xE721;" Tag="search"
                     Classes.selected="{Binding IsSearch}" Click="Section_OnClick" ToolTip.Tip="搜索全部歌曲（先暂停键盘演奏）" AutomationProperties.Name="搜索" />
             <Button x:Name="TimingTab" Theme="{StaticResource FloatingIcon}" Content="&#xE713;" Tag="settings"
@@ -103,6 +105,7 @@
                   Click="Collapse_OnClick" ToolTip.Tip="收起" AutomationProperties.Name="收起" />
         </Grid>
         <StackPanel Grid.Row="1" Spacing="6">
+        <TextBlock Text="已导入" IsVisible="{Binding IsImported}" Foreground="White" FontSize="12" />
         <TextBox x:Name="SearchBox" IsVisible="{Binding IsSearch}" Text="{Binding SearchText, Mode=TwoWay}"
                  PointerPressed="SearchBox_OnPointerPressed"
                  PlaceholderText="搜索歌名、歌手或作者" Foreground="White" CaretBrush="White"

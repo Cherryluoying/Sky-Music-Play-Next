@@ -38,6 +38,17 @@ int main()
         check(prepareTransport(events, true, 12000).cursor == 3, "exact seek boundary must leave note-on pending");
         Request request;
         std::string error;
+        for (int kind = 0; kind <= 6; ++kind)
+        {
+            const auto value = kind == 3 ? 16383 : 64;
+            check(parseRequest("{\"id\":9,\"type\":\"midi\",\"kind\":" + std::to_string(kind) +
+                ",\"data1\":" + std::to_string(value) + ",\"data2\":100,\"channel\":15}", request, error)
+                && request.midi.kind == kind && request.midi.data1 == value && request.midi.channel == 15,
+                "live channel messages must preserve type, precision and channel");
+        }
+        check(!parseRequest(R"({"id":9,"type":"midi","kind":3,"data1":16384,"data2":0,"channel":0})", request, error), "invalid live bend must fail");
+        check(!parseRequest(R"({"id":9,"type":"midi","kind":2,"data1":64,"channel":0})", request, error), "missing live value must fail");
+        check(!parseRequest(R"({"id":9,"type":"midi","kind":7,"data1":64,"data2":0,"channel":0})", request, error), "tempo is not a live channel message");
         const std::vector<SequenceEvent> sharedPitch {
             {0, 0, 81, 100, 11, 10}, {1000, 0, 81, 40, 11, 20}, {2000, 1, 81, 0, 11, 20}};
         const auto voices = prepareTransport(sharedPitch, true, 3000);

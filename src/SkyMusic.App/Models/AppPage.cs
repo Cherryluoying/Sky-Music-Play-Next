@@ -13,5 +13,6 @@ public enum AppPage
     KeyMapping,
     Transcription,
     // 保留原有设置页编号，已移除宏脚本页面。
-    Settings = 10
+    Settings = 10,
+    Imported = 11
 }

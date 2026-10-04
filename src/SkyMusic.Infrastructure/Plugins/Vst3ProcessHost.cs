@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkyMusic.Core.Plugins;
+using SkyMusic.Core.Midi;
 using SkyMusic.Core.Services;
 using SkyMusic.Infrastructure.Scores;
 
@@ -89,6 +90,15 @@ public sealed class Vst3ProcessHost : IInstrumentPluginHost, IMidiSequenceHost
     {
         EnsurePluginLoaded();
         await SendAsync(new HostRequest(NextId(), "allNotesOff"), cancellationToken);
+    }
+
+    // 完整实时消息与文件播放共用原生 MIDI 映射，不丢弃控制器或压缩弯音精度。
+    public ValueTask SendMessageAsync(MidiChannelMessage message, CancellationToken cancellationToken = default)
+    {
+        EnsurePluginLoaded();
+        if (!message.IsValid) throw new ArgumentOutOfRangeException(nameof(message));
+        return SendAsync(new HostRequest(NextId(), "midi", Channel: message.Channel,
+            Kind: (int)message.Kind, Data1: message.Data1, Data2: message.Data2), cancellationToken);
     }
 
     public async ValueTask<bool> OpenEditorAsync(CancellationToken cancellationToken = default)
@@ -331,7 +341,10 @@ public sealed class Vst3ProcessHost : IInstrumentPluginHost, IMidiSequenceHost
         int? Channel = null,
         IReadOnlyList<MidiSequenceEvent>? Events = null,
         bool? Playing = null,
-        long? Position = null);
+        long? Position = null,
+        int? Kind = null,
+        int? Data1 = null,
+        int? Data2 = null);
 
     private sealed record HostResponse(long Id, bool Ok, string? Name = null, string? Error = null);
 }

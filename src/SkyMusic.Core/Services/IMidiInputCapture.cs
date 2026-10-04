@@ -13,6 +13,9 @@ public interface IMidiInputCapture : IDisposable
 
     event Action<MidiNoteMessage>? NoteChanged;
 
+    // 完整通道事件供乐器转发；NoteChanged 仍负责录制和钢琴显示。
+    event Action<MidiChannelMessage>? MessageReceived;
+
     IReadOnlyList<MidiInputDeviceInfo> RefreshDevices();
 
     void Start(int deviceIndex);

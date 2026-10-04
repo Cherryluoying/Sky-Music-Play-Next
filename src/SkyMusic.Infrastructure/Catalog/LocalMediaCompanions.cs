@@ -16,7 +16,7 @@ internal static class LocalMediaCompanions
         var name = Path.GetFileNameWithoutExtension(sourcePath);
         var roots = new[] { directory, libraryRoot }.OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase);
         var cover = Find(directory, [name], ImageExtensions, exists);
-        var lyrics = Find(directory, [name], [".lrc"], exists);
+        var lyrics = Find(directory, [name], [".lrc", ".srt"], exists);
         foreach (var root in roots)
         {
             foreach (var folder in new[] { "cover", "covers" })
@@ -29,7 +29,7 @@ internal static class LocalMediaCompanions
                     if (cover is null && exists(candidate)) cover = candidate;
                 }
             }
-            lyrics ??= Find(Path.Combine(root, "lyrics"), [name, track.Id], [".lrc"], exists);
+            lyrics ??= Find(Path.Combine(root, "lyrics"), [name, track.Id], [".lrc", ".srt"], exists);
         }
         cover ??= Find(directory, ["cover", "folder", "front"], ImageExtensions, exists);
         return track with { CoverSource = cover ?? track.CoverSource, LyricsSourcePath = lyrics ?? track.LyricsSourcePath };

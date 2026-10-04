@@ -34,6 +34,7 @@ public sealed class MidiInputCapture : IMidiInputCapture
     public bool IsListening => CurrentDevice is not null;
 
     public event Action<MidiNoteMessage>? NoteChanged;
+    public event Action<MidiChannelMessage>? MessageReceived;
 
     // 从 RtMidi 刷新当前可用输入设备
     public IReadOnlyList<MidiInputDeviceInfo> RefreshDevices()
@@ -71,23 +72,22 @@ public sealed class MidiInputCapture : IMidiInputCapture
             StopCore();
     }
 
-    // 将原生 MIDI 字节转换为托管音符消息
+    // 回调只解析并投递消息，不在设备线程等待插件 IPC。
     private void OnMessage(IntPtr userData, double deltaSeconds, IntPtr data, uint size)
     {
-        if (size < 3 || data == IntPtr.Zero)
+        if (size < 2 || data == IntPtr.Zero)
             return;
-        var status = Marshal.ReadByte(data);
-        var type = status & 0xF0;
-        if (type is not (0x80 or 0x90))
+        Span<byte> bytes = stackalloc byte[3];
+        var length = (int)Math.Min(size, 3u);
+        for (var i = 0; i < length; i++) bytes[i] = Marshal.ReadByte(data, i);
+        if (!MidiChannelMessage.TryParse(bytes[..length], out var message))
             return;
-
-        var note = Marshal.ReadByte(data, 1);
-        var velocity = Marshal.ReadByte(data, 2);
-        var isNoteOn = type == 0x90 && velocity > 0;
+        MessageReceived?.Invoke(message);
+        if (message.Kind is not (MidiChannelMessageKind.NoteOn or MidiChannelMessageKind.NoteOff))
+            return;
         var timestamp = checked(_clock.ElapsedTicks * 1_000_000L / Stopwatch.Frequency);
-
-        // 原生回调线程只转换事件
-        NoteChanged?.Invoke(new MidiNoteMessage(note, velocity, status & 0x0F, isNoteOn, timestamp));
+        NoteChanged?.Invoke(new MidiNoteMessage(message.Data1, (byte)message.Data2, message.Channel,
+            message.Kind == MidiChannelMessageKind.NoteOn, timestamp));
     }
 
     private void StopCore()

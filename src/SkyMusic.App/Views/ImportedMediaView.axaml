@@ -1,0 +1,60 @@
+<!-- 模块：用户已导入的本地媒体；复用曲目行与播放命令，固定视口支持大曲库虚拟化。 -->
+<UserControl x:Class="SkyMusic.App.Views.ImportedMediaView"
+             xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SkyMusic.App.Controls" xmlns:vm="using:SkyMusic.App.ViewModels">
+  <Grid RowDefinitions="56,*">
+    <controls:SkyWindowHeader Title="已导入">
+      <controls:SkyWindowHeader.TrailingContent>
+        <controls:SkySearchBox Width="240" Text="{Binding SearchText, Mode=TwoWay}" Watermark="搜索已导入的内容" />
+      </controls:SkyWindowHeader.TrailingContent>
+    </controls:SkyWindowHeader>
+    <Grid Grid.Row="1" Margin="28,18,28,24" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="12">
+      <StackPanel Spacing="4">
+        <TextBlock Text="你的本地内容" Classes="sky-section-title" />
+        <TextBlock Text="文件导入与目录扫描收录的音乐、乐谱和 MIDI" Classes="sky-secondary" />
+        <TextBlock Text="{Binding CountText}" Classes="sky-caption" />
+      </StackPanel>
+      <WrapPanel Grid.Row="1">
+        <ComboBox x:Name="CategorySelector" ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}" MinWidth="130" />
+        <Button Content="导入文件" Margin="12,0,0,0" Theme="{StaticResource SkyPrimaryCommandButtonTheme}"
+                Click="ImportFiles_OnClick" IsEnabled="{Binding !Library.IsImporting}" />
+        <Button Content="导入文件夹" Margin="12,0,0,0" Theme="{StaticResource SkyCommandButtonTheme}"
+                Click="ImportFolder_OnClick" IsEnabled="{Binding !Library.IsImporting}" />
+        <Button Content="刷新" Margin="12,0,0,0" Command="{Binding RefreshCommand}" Theme="{StaticResource SkyCommandButtonTheme}" />
+      </WrapPanel>
+      <StackPanel Grid.Row="2" Spacing="4">
+        <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" Height="3" />
+        <ProgressBar IsVisible="{Binding Library.IsImporting}" IsIndeterminate="True" Height="3" />
+        <TextBlock Text="{Binding Error}" Foreground="#C43C39" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Library.StatusText}" Classes="sky-caption" TextWrapping="Wrap" />
+      </StackPanel>
+      <Grid Grid.Row="3" ColumnDefinitions="36,50,*,130,52,40,40">
+        <TextBlock Text="#" Classes="sky-caption" HorizontalAlignment="Center" />
+        <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="歌曲" Classes="sky-caption" Margin="12,0,0,0" />
+        <TextBlock Grid.Column="3" Text="作者" Classes="sky-caption" />
+        <TextBlock Grid.Column="4" Text="时长" Classes="sky-caption" HorizontalAlignment="Right" />
+      </Grid>
+      <Grid Grid.Row="4">
+        <ListBox x:Name="ImportedTracks" ItemsSource="{Binding Tracks}" Background="Transparent" BorderThickness="0" Padding="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="0" />
+              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Setter Property="Theme">
+                <ControlTheme TargetType="ListBoxItem">
+                  <Setter Property="Template">
+                    <ControlTemplate><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch" /></ControlTemplate>
+                  </Setter>
+                </ControlTheme>
+              </Setter>
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate><DataTemplate DataType="vm:TrackItemViewModel"><controls:TrackRow /></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="暂无匹配内容，可切换分类、清空搜索或导入文件" IsVisible="{Binding IsEmpty}"
+                   Classes="sky-secondary" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

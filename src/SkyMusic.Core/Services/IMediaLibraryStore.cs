@@ -32,6 +32,10 @@ public interface IMediaLibraryStore
 
     Task UpdateMetadataAsync(MusicTrack track, CancellationToken cancellationToken = default);
 
+    // 用户封面独立于自动标签读取，重扫和历史写入不能覆盖用户选择。
+    Task SetCustomCoverAsync(string trackId, string coverPath, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("当前媒体库不支持自定义封面。");
+
     Task RecordPlayedAsync(string trackId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<MediaFileStamp>> GetFileIndexAsync(CancellationToken cancellationToken = default)

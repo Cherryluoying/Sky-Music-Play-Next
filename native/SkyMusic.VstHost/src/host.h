@@ -3,6 +3,7 @@
 
 #include "spsc_queue.h"
 #include "sequence.h"
+#include "component_handler.h"
 
 #include "public.sdk/source/vst/hosting/module.h"
 #include "public.sdk/source/vst/hosting/plugprovider.h"
@@ -26,7 +27,8 @@ enum class MidiCommandType
     NoteOn,
     NoteOff,
     AllNotesOff,
-    Transport
+    Transport,
+    ChannelMessage
 };
 
 struct MidiCommand
@@ -37,6 +39,7 @@ struct MidiCommand
     int channel {};
     const TransportPlan* transport {};
     int noteId {-1};
+    int kind {};
 };
 
 class VstHost final : private audio::IAudioRenderNode
@@ -55,6 +58,7 @@ public:
     bool isLoaded() const noexcept;
     bool setSequence(std::vector<SequenceEvent> events, std::string& error);
     bool setTransport(bool playing, std::int64_t position, std::string& error);
+    void pollControllerChanges();
 
 private:
     // 离线诊断复用实际 render 路径，不连接声卡、不改动用户正在运行的插件。
@@ -76,6 +80,7 @@ private:
 
     VST3::Hosting::Module::Ptr module_;
     Steinberg::IPtr<Steinberg::Vst::PlugProvider> provider_;
+    Steinberg::IPtr<ComponentHandler> componentHandler_;
     std::unique_ptr<RenderState> renderState_;
     SpscQueue<MidiCommand, 4096> commands_;
     audio::AudioGraph graph_;

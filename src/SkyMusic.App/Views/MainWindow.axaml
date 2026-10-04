@@ -23,6 +23,9 @@
     <DataTemplate DataType="vm:LibraryViewModel">
       <views:LibraryView />
     </DataTemplate>
+    <DataTemplate DataType="vm:ImportedMediaViewModel">
+      <views:ImportedMediaView />
+    </DataTemplate>
     <DataTemplate DataType="vm:FavoriteViewModel">
       <views:FavoriteView />
     </DataTemplate>

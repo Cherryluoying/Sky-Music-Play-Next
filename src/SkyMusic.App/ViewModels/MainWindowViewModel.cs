@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ScoreEditorViewModel _scoreEditor;
     private readonly TranscriptionViewModel _transcription;
     private readonly LibraryViewModel _library;
+    private readonly ImportedMediaViewModel _imported;
     private AppPage _currentPage = AppPage.Discover;
     private object _currentPageViewModel;
     private bool _isPlayerVisible;
@@ -73,6 +74,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             NavigateTo(AppPage.Tasks, true);
         });
         _library = new LibraryViewModel(mediaLibraryStore, mediaImporter, coverImages, Playback, appSettingsStore);
+        _imported = new ImportedMediaViewModel(mediaLibraryStore, coverImages, _library);
         var settings = new SettingsViewModel(
             appSettingsStore,
             appSettings,
@@ -92,6 +94,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             [AppPage.Discover] = discover,
             [AppPage.Library] = _library,
+            [AppPage.Imported] = _imported,
             [AppPage.Favorites] = new FavoriteViewModel(_library),
             [AppPage.Recent] = new RecentViewModel(_library),
             [AppPage.Tasks] = _tasks,
@@ -127,6 +130,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         ];
         MusicNavigationItems =
         [
+            new NavigationItemViewModel("已导入", "\uE8B7", AppPage.Imported),
             new NavigationItemViewModel("我喜欢的音乐", "\uEB51", AppPage.Favorites),
             new NavigationItemViewModel("最近播放", "\uE81C", AppPage.Recent)
         ];
@@ -166,7 +170,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     // 每次开启悬浮窗创建轻量视图状态，播放引擎和曲库仍由主窗口统一持有。
     public FloatingPlayerViewModel CreateFloatingPlayer()
-        => new(_mediaLibraryStore, _coverImages, Playback);
+        => new(_mediaLibraryStore, _coverImages, Playback, _library);
 
     public ObservableCollection<TrackItemViewModel> GlobalSearchResults { get; } = [];
 
@@ -346,6 +350,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _tasks.Dispose();
         // 先停止播放器向 VST 主机发送 MIDI 音符，再释放工作台共用的插件主机。
         _transcription.Dispose();
+        _imported.Dispose();
         _library.Dispose();
         Playback.Dispose();
         _midiStudio.Dispose();

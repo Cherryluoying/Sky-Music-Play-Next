@@ -32,6 +32,7 @@ public sealed class MediaDirectoryScannerTests
             await File.WriteAllBytesAsync(Path.Combine(source, "covers", "钢琴.png"), [1]);
             await File.WriteAllBytesAsync(Path.Combine(source, "歌曲.jpg"), [2]);
             await File.WriteAllTextAsync(Path.Combine(source, "lyrics", "钢琴.lrc"), "[00:00]测试");
+            await File.WriteAllTextAsync(Path.Combine(source, "歌曲.srt"), "1\n00:00:01,000 --> 00:00:03,000\n歌词");
             var store = new SqliteMediaLibraryStore(Path.Combine(temporary, "db", "library.db"));
             var importer = new CountingImporter(new MediaImportService(Path.Combine(temporary, "output"), new ScoreImportService()));
             var scanner = new MediaDirectoryScanner(importer, store);
@@ -47,6 +48,7 @@ public sealed class MediaDirectoryScannerTests
             Assert.Equal(Path.Combine(source, "covers", "钢琴.png"), midi.CoverSource);
             Assert.Equal(Path.Combine(source, "lyrics", "钢琴.lrc"), midi.LyricsSourcePath);
             Assert.Equal(Path.Combine(source, "歌曲.jpg"), Assert.Single(tracks, item => item.Track.Kind == MediaKind.Audio).Track.CoverSource);
+            Assert.Equal(Path.Combine(source, "歌曲.srt"), Assert.Single(tracks, item => item.Track.Kind == MediaKind.Audio).Track.LyricsSourcePath);
             await store.SetFavoriteAsync(midi.Id, true);
             await store.RecordPlayedAsync(midi.Id);
             File.Delete(Path.Combine(source, "说明.txt"));

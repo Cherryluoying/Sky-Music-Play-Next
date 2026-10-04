@@ -19,6 +19,7 @@ struct Request
     std::vector<SequenceEvent> events;
     bool playing {};
     std::int64_t position {};
+    SequenceEvent midi {};
 };
 
 struct Response

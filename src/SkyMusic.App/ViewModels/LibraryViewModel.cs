@@ -50,6 +50,8 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
     }
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
+    // 导入、目录扫描、收藏与元数据更新后，通知其他本地媒体视图刷新。
+    public event EventHandler? Refreshed;
     public ObservableCollection<TrackItemViewModel> FavoriteTracks { get; } = [];
     public ObservableCollection<TrackItemViewModel> RecentTracks { get; } = [];
     public AsyncRelayCommand ScanDirectoriesCommand { get; }
@@ -217,6 +219,7 @@ public sealed class LibraryViewModel : ObservableObject, IDisposable
             _records.Clear();
             _records.AddRange(await _store.GetPlaylistAsync(cancellationToken: _lifetime.Token));
             ApplyFilter();
+            Refreshed?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception exception)

@@ -23,10 +23,12 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
     {
         SingleReader = true,
         SingleWriter = false,
-        FullMode = BoundedChannelFullMode.DropWrite
+        // TryWrite 必须在满队列时返回 false，不能悄悄丢掉松键/踏板释放。
+        FullMode = BoundedChannelFullMode.Wait
     });
     private readonly CancellationTokenSource _pluginCancellation = new();
     private readonly Task _pluginWorker;
+    private int _resetPluginQueue;
     private readonly HashSet<int> _activeNotes = [];
     private MidiInputDeviceInfo? _selectedDevice;
     private InstrumentPluginInfo? _selectedPlugin;
@@ -48,6 +50,7 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
             ? vst3SearchPaths
             : Vst3PluginCatalog.GetDefaultSearchPaths();
         _capture.NoteChanged += OnNoteChanged;
+        _capture.MessageReceived += OnMidiMessage;
         _playbackMonitor.EventPlayed += OnPlaybackEvent;
         RefreshCommand = new RelayCommand(_ => RefreshDevices());
         ToggleListeningCommand = new RelayCommand(_ => ToggleListening(), _ => SelectedDevice is not null);
@@ -244,11 +247,13 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
         StatusText = $"录制完成，共 {_recordedScore.Notes.Count} 个音符";
     }
 
-    // 同步钢琴窗状态并转发实时音符到 VST3
+    // 完整消息只转发一次；音符事件保留给录制和钢琴显示。
+    private void OnMidiMessage(MidiChannelMessage message) => EnqueuePluginEvent(new(message));
+
+    // 同步钢琴窗与录制状态，不重复向插件发送音符。
     private void OnNoteChanged(MidiNoteMessage message)
     {
         _recorder.Process(message);
-        EnqueuePluginEvent(new PluginMidiEvent(message.Note, message.Velocity, message.Channel, message.IsNoteOn));
         Dispatcher.UIThread.Post(() =>
         {
             if (message.IsNoteOn)
@@ -271,11 +276,11 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
 
     private void OnPlaybackEvent(PlaybackEvent playbackEvent)
     {
-        EnqueuePluginEvent(new PluginMidiEvent(
+        EnqueuePluginEvent(new PluginMidiEvent(new MidiChannelMessage(
+            playbackEvent.Type == PlaybackEventType.KeyDown ? MidiChannelMessageKind.NoteOn : MidiChannelMessageKind.NoteOff,
             playbackEvent.MidiNote,
             playbackEvent.Velocity,
-            playbackEvent.Channel,
-            playbackEvent.Type == PlaybackEventType.KeyDown));
+            playbackEvent.Channel)));
         Dispatcher.UIThread.Post(() =>
         {
             if (playbackEvent.Type == PlaybackEventType.KeyDown)
@@ -298,6 +303,7 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
         }
 
         _capture.Stop();
+        if (IsListening) EnqueuePluginEvent(new(default, Reset: true));
         IsListening = false;
         _activeNotes.Clear();
         ActiveNotesChanged?.Invoke(_activeNotes);
@@ -308,6 +314,7 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
     {
         StopListening();
         _capture.NoteChanged -= OnNoteChanged;
+        _capture.MessageReceived -= OnMidiMessage;
         _playbackMonitor.EventPlayed -= OnPlaybackEvent;
         _capture.Dispose();
         _pluginEvents.Writer.TryComplete();
@@ -345,7 +352,9 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
         if (!_pluginEvents.Writer.TryWrite(midiEvent))
         {
             Dispatcher.UIThread.Post(() => StatusText = "VST3 MIDI 队列已满，已请求释放音符");
-            _ = _pluginHost.AllNotesOffAsync();
+            Interlocked.Exchange(ref _resetPluginQueue, 1);
+            // 消费者可能刚好读完最后一项；补一个唤醒标记，避免复位一直等到下次按键。
+            _pluginEvents.Writer.TryWrite(new(default, Reset: true));
         }
     }
 
@@ -356,23 +365,27 @@ public sealed class MidiStudioViewModel : ObservableObject, IDisposable
         {
             try
             {
-                if (midiEvent.IsNoteOn)
+                if (Interlocked.Exchange(ref _resetPluginQueue, 0) != 0)
                 {
-                    await _pluginHost.NoteOnAsync(midiEvent.Note, midiEvent.Velocity, midiEvent.Channel, cancellationToken);
+                    // 溢出后废弃失去配对关系的积压事件，再释放全部按键和踏板。
+                    while (_pluginEvents.Reader.TryRead(out _)) { }
+                    await _pluginHost.AllNotesOffAsync(cancellationToken);
+                    continue;
                 }
+                if (midiEvent.Reset)
+                    await _pluginHost.AllNotesOffAsync(cancellationToken);
                 else
-                {
-                    await _pluginHost.NoteOffAsync(midiEvent.Note, midiEvent.Velocity, midiEvent.Channel, cancellationToken);
-                }
+                    await _pluginHost.SendMessageAsync(midiEvent.Message, cancellationToken);
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                await Dispatcher.UIThread.InvokeAsync(() => SetError(exception));
+                // 退出时 UI 线程可能正在等待 worker，错误提示不能反向等待 UI。
+                Dispatcher.UIThread.Post(() => SetError(exception));
             }
         }
     }
 
     private void SetError(Exception exception) => StatusText = $"VST3 宿主失败：{exception.Message}";
 
-    private readonly record struct PluginMidiEvent(int Note, byte Velocity, int Channel, bool IsNoteOn);
+    private readonly record struct PluginMidiEvent(MidiChannelMessage Message, bool Reset = false);
 }

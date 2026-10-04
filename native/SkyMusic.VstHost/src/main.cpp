@@ -24,6 +24,12 @@ namespace
 skymusic::Response handleRequest(skymusic::VstHost& host, const skymusic::Request& request, bool& running)
 {
     std::string error;
+    if (request.type == "midi")
+    {
+        const auto& e = request.midi;
+        return host.enqueue({skymusic::MidiCommandType::ChannelMessage, e.data1, e.data2, e.channel, nullptr, -1, e.kind}, error)
+            ? skymusic::Response {request.id, true} : skymusic::Response {request.id, false, {}, error};
+    }
     if (request.type == "sequence")
         return host.setSequence(request.events, error)
             ? skymusic::Response {request.id, true} : skymusic::Response {request.id, false, {}, error};
@@ -105,6 +111,7 @@ int main()
         }
         if (!running)
             break;
+        host.pollControllerChanges();
 
         // 不使用会预读后续命令的 std::cin；完整时间线可以分段到达，
         // 缺少换行时继续处理窗口消息，不在半条 JSON 上阻塞界面。
@@ -130,7 +137,7 @@ int main()
         std::string error;
         skymusic::Response response;
         if (!skymusic::parseRequest(line, request, error))
-            response = {0, false, {}, error};
+            response = {request.id, false, {}, error};
         else
             response = handleRequest(host, request, running);
         std::cout << skymusic::serializeResponse(response) << '\n' << std::flush;

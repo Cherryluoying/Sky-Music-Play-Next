@@ -44,6 +44,8 @@ struct VstHost::RenderState
     double sequenceFrame {};
     bool sequencePlaying {};
     bool hasSequence {};
+    // 文件暂停只关闭文件后的输出；新实时音符可重新打开输出，不恢复文件时钟。
+    bool liveOutputEnabled {};
 };
 
 namespace
@@ -92,32 +94,6 @@ void addEvent(
     }
     events.addEvent(event);
 }
-}
-
-namespace
-{
-// 编辑器向宿主回报参数编辑；未实现的自动化操作明确返回不支持。
-class ComponentHandler final : public Steinberg::Vst::IComponentHandler
-{
-public:
-    Steinberg::tresult PLUGIN_API beginEdit(Steinberg::Vst::ParamID) override { return Steinberg::kNotImplemented; }
-    Steinberg::tresult PLUGIN_API performEdit(
-        Steinberg::Vst::ParamID,
-        Steinberg::Vst::ParamValue) override { return Steinberg::kNotImplemented; }
-    Steinberg::tresult PLUGIN_API endEdit(Steinberg::Vst::ParamID) override { return Steinberg::kNotImplemented; }
-    Steinberg::tresult PLUGIN_API restartComponent(Steinberg::int32) override { return Steinberg::kNotImplemented; }
-
-    Steinberg::tresult PLUGIN_API queryInterface(const Steinberg::TUID, void**) override
-    {
-        return Steinberg::kNoInterface;
-    }
-
-    Steinberg::uint32 PLUGIN_API addRef() override { return 1000; }
-    Steinberg::uint32 PLUGIN_API release() override { return 1000; }
-};
-
-ComponentHandler gComponentHandler;
-
 }
 
 // 编辑器窗口与视图在同一条消息线程上创建、缩放和释放。
@@ -344,7 +320,14 @@ bool VstHost::load(const std::string& path, std::string& pluginName, std::string
     programSteps_.fill(127);
     if (auto controller = provider_->getControllerPtr())
     {
-        controller->setComponentHandler(&gComponentHandler);
+        std::vector<Steinberg::Vst::ParamID> ids;
+        for (int p = 0; p < controller->getParameterCount(); ++p)
+        {
+            Steinberg::Vst::ParameterInfo info {};
+            if (controller->getParameterInfo(p, info) == Steinberg::kResultOk) ids.push_back(info.id);
+        }
+        componentHandler_ = Steinberg::owned(new ComponentHandler(std::move(ids)));
+        controller->setComponentHandler(componentHandler_.get());
         Steinberg::FUnknownPtr<Steinberg::Vst::IMidiMapping> mapping(controller);
         if (mapping)
             for (int channel = 0; channel < 16; ++channel)
@@ -421,6 +404,7 @@ void VstHost::unload() noexcept
         if (auto controller = provider_->getControllerPtr())
             controller->setComponentHandler(nullptr);
     provider_ = nullptr;
+    componentHandler_ = nullptr;
     module_.reset();
     sequence_.clear();
     transportPlans_.clear();
@@ -482,7 +466,9 @@ bool VstHost::enqueue(const MidiCommand& command, std::string& error) noexcept
         error = "no VST3 instrument is loaded";
         return false;
     }
-    if (command.note < 0 || command.note > 127 || command.velocity < 0 || command.velocity > 127 ||
+    const auto maxData = command.type == MidiCommandType::ChannelMessage && command.kind == 3 ? 16383 : 127;
+    if (command.note < 0 || command.note > maxData || command.velocity < 0 || command.velocity > 127 ||
+        (command.type == MidiCommandType::ChannelMessage && (command.kind < 0 || command.kind > 6)) ||
         command.channel < 0 || command.channel > 15)
     {
         error = "MIDI value is outside its valid range";
@@ -499,6 +485,13 @@ bool VstHost::enqueue(const MidiCommand& command, std::string& error) noexcept
 bool VstHost::isLoaded() const noexcept
 {
     return loaded_.load(std::memory_order_acquire);
+}
+
+// 在宿主消息泵上处理预设参数刷新，控制器不进入实时线程。
+void VstHost::pollControllerChanges()
+{
+    if (componentHandler_ && provider_)
+        if (auto controller = provider_->getControllerPtr()) componentHandler_->refreshController(*controller);
 }
 
 // 在宿主音频线程持续处理插件输出
@@ -558,15 +551,27 @@ bool VstHost::prepare(const audio::AudioStreamFormat& format, std::string& error
         return false;
     }
     state->processData.inputEvents = &state->inputEvents;
-    // 预分配控制器队列及其点缓存，普通 MIDI 密度下回调不分配参数对象。
+    // 编辑器参数和 MIDI 参数的并集在启动时预热；实时回调不创建参数队列。
+    if (componentHandler_)
+        for (const auto id : componentHandler_->parameterIds())
+        {
+            Steinberg::int32 index = 0;
+            state->parameters.addParameterData(id, index);
+        }
     for (const auto& channel : controllerMap_)
         for (const auto id : channel)
             if (id != Steinberg::Vst::kNoParamId)
             {
                 Steinberg::int32 index = 0;
-                auto* queue = state->parameters.addParameterData(id, index);
-                for (int sample = 0; sample < 256; ++sample) queue->addPoint(sample, 0, index);
+                state->parameters.addParameterData(id, index);
             }
+    // 一个参数每个采样位置最多一个点；所有池槽都需要预留相同容量。
+    for (int i = 0; i < state->parameters.getParameterCount(); ++i)
+    {
+        auto* queue = state->parameters.getParameterData(i);
+        Steinberg::int32 index = 0;
+        for (unsigned sample = 0; sample < format.maximumFrames; ++sample) queue->addPoint(sample, 0, index);
+    }
     state->parameters.clearQueue();
     state->processData.inputParameterChanges = &state->parameters;
     state->processData.processContext = &state->processContext;
@@ -591,6 +596,7 @@ void VstHost::render(
     auto& state = *renderState_;
     state.inputEvents.clear();
     state.parameters.clearQueue();
+    if (componentHandler_) componentHandler_->drain(state.parameters);
     // MIDI CC/弯音通过 VST3 IMidiMapping 转换为参数点，音符使用原始通道和力度。
     auto sendSequenceEvent = [&](const SequenceEvent& event, int offset) {
         using namespace Steinberg::Vst;
@@ -633,7 +639,8 @@ void VstHost::render(
         }
     };
     MidiCommand command;
-    while (commands_.pop(command))
+    // 有界消费，避免密集实时输入让音频回调一直停在命令队列。
+    for (int count = 0; count < 4096 && commands_.pop(command); ++count)
     {
         if (command.type == MidiCommandType::Transport)
         {
@@ -642,6 +649,7 @@ void VstHost::render(
             for (int channel = 0; channel < 16; ++channel)
             {
                 sendSequenceEvent({0, 2, 64, 0, channel}, 0);
+                sendSequenceEvent({0, 2, 66, 0, channel}, 0);
                 sendSequenceEvent({0, 2, 120, 0, channel}, 0);
                 sendSequenceEvent({0, 2, 121, 0, channel}, 0);
             }
@@ -649,12 +657,34 @@ void VstHost::render(
             state.cursor = plan.cursor;
             state.sequenceFrame = plan.position * state.processContext.sampleRate / 1000000.0;
             state.sequencePlaying = plan.playing;
+            state.liveOutputEnabled = false;
             for (const auto& event : plan.restore) sendSequenceEvent(event, 0);
             appliedTransport_.store(command.transport, std::memory_order_release);
             SetEvent(transportAppliedEvent_);
         }
-        else
+        else if (command.type == MidiCommandType::ChannelMessage)
+        {
+            const auto kind = command.kind == 0 && command.velocity == 0 ? 1 : command.kind;
+            if (kind == 0) state.liveOutputEnabled = true;
+            sendSequenceEvent({0, kind, command.note, command.velocity, command.channel}, 0);
+        }
+        else if (command.type == MidiCommandType::AllNotesOff)
+        {
             addEvent(state.inputEvents, command, state.activeNotes);
+            for (int channel = 0; channel < 16; ++channel)
+            {
+                sendSequenceEvent({0, 2, 64, 0, channel}, 0);
+                sendSequenceEvent({0, 2, 66, 0, channel}, 0);
+                sendSequenceEvent({0, 2, 120, 0, channel}, 0);
+                sendSequenceEvent({0, 3, 8192, 0, channel}, 0);
+            }
+            state.liveOutputEnabled = false;
+        }
+        else
+        {
+            if (command.type == MidiCommandType::NoteOn && command.velocity > 0) state.liveOutputEnabled = true;
+            addEvent(state.inputEvents, command, state.activeNotes);
+        }
     }
     if (state.sequencePlaying)
     {
@@ -692,7 +722,7 @@ void VstHost::render(
         {
             const auto sourceChannel = std::min<int>(channel, pluginChannels - 1);
             interleavedOutput[static_cast<std::size_t>(frame) * channelCount + channel] =
-                state.hasSequence && !state.sequencePlaying ? 0.0f :
+                state.hasSequence && !state.sequencePlaying && !state.liveOutputEnabled ? 0.0f :
                 state.processData.outputs[0].channelBuffers32[sourceChannel][frame];
         }
     }
